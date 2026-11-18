@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/davideconte/juggl/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/davideconte/juggl/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://juggl.dev"><img alt="Website" src="https://img.shields.io/badge/juggl.dev-0b0b0c?style=flat-square"></a>
   <img alt="macOS" src="https://img.shields.io/badge/macOS-13%2B-0b0b0c?style=flat-square">
   <img alt="Windows beta" src="https://img.shields.io/badge/Windows-beta-6e6e73?style=flat-square">
@@ -85,7 +86,7 @@ Also in the box: Claude Code and Codex in the same list, sub-chats grouped under
 - **Reads** the session files Claude Code (`~/.claude/projects`) and Codex already write.
 - **Hooks**: Juggl adds Claude Code hooks to `~/.claude/settings.json` so it knows the moment a session waits. You can remove them from Settings.
 - **Your login**: sessions run with your own Claude Code and Codex logins, on your computer.
-- **Data** stays in `~/.juggl` on your computer. The only server Juggl talks to is juggl.dev, for the account, the license check and updates. No analytics, no tracking.
+- **Data** stays in `~/.juggl` on your computer. The only server Juggl talks to is juggl.dev: for the account, the license check, updates, and the problem reports you choose to send from Help (you see everything in them before sending). No analytics, no tracking.
 
 ## Get it
 
@@ -113,7 +114,7 @@ cd src-tauri
 cargo tauri dev --config tauri.dictation.conf.json     # or: cargo tauri build --config ...
 ```
 
-**Checks**, the same ones CI runs on every pull request:
+**Checks**, the same ones CI runs on macOS for every pull request (on Linux CI checks that it builds):
 
 ```bash
 (cd src-tauri && cargo test --bin tavolo)
