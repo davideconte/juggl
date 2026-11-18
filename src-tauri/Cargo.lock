@@ -2172,7 +2172,7 @@ dependencies = [
 
 [[package]]
 name = "juggl"
-version = "0.1.104"
+version = "0.1.107"
 dependencies = [
  "base64 0.22.1",
  "block2",

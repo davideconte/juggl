@@ -5,8 +5,7 @@
       "appimage"
     ],
     "externalBin": [
-      "binaries/juggl-custode",
-      "binaries/whisper-cli"
+      "binaries/juggl-custode"
     ],
     "createUpdaterArtifacts": false,
     "icon": [

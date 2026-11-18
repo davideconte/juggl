@@ -1052,7 +1052,8 @@
       return;
     }
     const nn = t.closest?.("[data-el-nuova-in]");
-    if (nn) { e.preventDefault(); e.stopPropagation(); const pid = nn.dataset.elNuovaIn; if (typeof apriNuova === "function") { apriNuova(); const t0 = Date.now(); const attempt = () => { const c = document.querySelector(`#nuova-dove [data-prog="${CSS.escape(pid)}"]`); if (c) c.click(); else if (Date.now() - t0 < 3000) setTimeout(attempt, 100); }; attempt(); } return; }
+    // the New chat window opens already on the project (new-chat.js: apriNuova({ progetto }))
+    if (nn) { e.preventDefault(); e.stopPropagation(); if (typeof window.apriNuova === "function") window.apriNuova({ progetto: nn.dataset.elNuovaIn }); return; }
     const lb = t.closest?.("[data-el-libera]"); if (lb) { e.preventDefault(); e.stopPropagation(); return putToRest(lb.dataset.elLibera.split(",").filter(Boolean)); }
     if (t.closest?.("[data-el-annulla]")) { e.preventDefault(); e.stopPropagation(); return undoRest(); }
   }, true);

@@ -3,7 +3,7 @@
 # the binary stays "tavolo" for cargo (cargo test --bin tavolo, CI, other worktrees): the visible name comes from
 # mainBinaryName in tauri.conf.json (Mac, Windows, Linux).
 name = "juggl"
-version = "0.1.104"
+version = "0.1.107"
 edition = "2021"
 default-run = "tavolo"
 

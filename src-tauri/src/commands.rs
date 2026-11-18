@@ -49,7 +49,7 @@ const JUGGL: &[J] = &[
     J { nome: "memoria", alias: &["memory"], arg: "", desc: "Apri la memoria di Claude (CLAUDE.md)" },
     J { nome: "larghezza", alias: &["width"], arg: "[stretta | normale | larga]", desc: "Larghezza della colonna dei messaggi" },   // width (16/11)
     J { nome: "impostazioni", alias: &["settings"], arg: "[cosa cambiare]", desc: "Impostazioni di Juggl: anche a parole" },   // settings as a chat (16/11)
-    J { nome: "scorciatoie", alias: &["tasti", "shortcuts"], arg: "", desc: "Tasti per passare da una chat all'altra" },
+    J { nome: "scorciatoie", alias: &["tasti", "shortcuts"], arg: "", desc: "Tasti per passare da una chat all'altra e per la chat nuova" },
     J { nome: "aiuto", alias: &["help", "?"], arg: "", desc: "Tutti i comandi" },
 ];
 
@@ -535,7 +535,7 @@ fn run_juggl(j: &J, typed: &str, id: &str, arg: &str, st: &Value, kind: ChatKind
         "archivia" => handled(&cmd, "Archiviare questa chat? Resta tra le archiviate e la riprendi quando vuoi.", "archivia", json!({})),
         "cerca" => handled(&cmd, "Per cercare nella chat usa ⌘F.", "cerca", json!({"arg": arg})),
         "richieste" => handled(&cmd, "Le richieste sono nella vista Richieste (⌘R).", "richieste", json!({})),
-        "scorciatoie" => handled(&cmd, "Passare da una chat all'altra: ⌘[ e ⌘] indietro e avanti tra le chat aperte (come in Safari); ⌃Tab e ⌃⇧Tab chat successiva e precedente nell'ordine dell'elenco. Sono anche nel menu Vista.", "", json!({})),
+        "scorciatoie" => handled(&cmd, "Passare da una chat all'altra: ⌘[ e ⌘] indietro e avanti tra le chat aperte (come in Safari); ⌃Tab e ⌃⇧Tab chat successiva e precedente nell'ordine dell'elenco. Sono anche nel menu Vista. Chat nuova: ⌘N (nella finestra ⌘P cambia il progetto, ⌘Invio apre una chat nuova anche se ce n'è una simile).", "", json!({})),
         "permessi" => handled(&cmd, "I permessi delle chat sono in Impostazioni, alla voce Permessi.", "permessi", json!({})),
         "memoria" => {
             let project = Path::new(&cwd).join("CLAUDE.md");

@@ -98,12 +98,27 @@ Signed builds for macOS, and beta builds for Windows and Linux, are on **[juggl.
 Requirements: Rust (stable), the Tauri 2 CLI (`cargo install tauri-cli`), and on macOS the Xcode command line tools. The interface is plain HTML and JavaScript in `ui/`, with no build step.
 
 ```bash
-# once: build the whisper-cli sidecar used for dictation (Tauri needs it to bundle the app)
-src-tauri/binaries/build-whisper.sh
-
 cd src-tauri
 cargo tauri dev      # run
 cargo tauri build    # package
+```
+
+On **Linux and Windows**, build the keeper helper once first: `tools/build-keeper.sh`. On Linux you also need the usual [Tauri system libraries](https://v2.tauri.app/start/prerequisites/#linux).
+
+**Dictation is optional.** It uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp), which is not in the repository. Without it Juggl builds and runs normally, only the microphone does not transcribe. To include it on macOS:
+
+```bash
+src-tauri/binaries/build-whisper.sh
+cd src-tauri
+cargo tauri dev --config tauri.dictation.conf.json     # or: cargo tauri build --config ...
+```
+
+**Checks**, the same ones CI runs on every pull request:
+
+```bash
+(cd src-tauri && cargo test --bin tavolo)
+python3 tools/check-ui.py
+for t in tools/test-*.mjs; do node "$t"; done
 ```
 
 ## FAQ

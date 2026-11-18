@@ -275,7 +275,8 @@
       case "nuova-chat":
         if (r.msg) notice(r.msg, 3600);
         await (window.apriNuova || apriNuova)();
-        if (r.arg) { const t = document.getElementById("nuova-testo"); if (t) { t.value = r.arg; t.focus(); } }
+        // new chat (Nov 18): the input event lets the window pick the project from the text
+        if (r.arg) { const t = document.getElementById("nuova-testo"); if (t) { t.value = r.arg; t.focus(); t.dispatchEvent(new Event("input", { bubbles: true })); } }
         return;
       case "scegli-modello": {
         const b = V?.el?.querySelector(".r-regola") || document.querySelector(".st-mod");

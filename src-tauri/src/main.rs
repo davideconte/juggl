@@ -45,6 +45,7 @@ mod fast_open;   // fast (14/11): cache of chats and logs, git that does not blo
 // open as chat (12/11): a subagent becomes a real chat in the same folder (src/open_as_chat.rs)
 mod open_as_chat;
 mod sys;
+mod worked;
 mod hook;
 mod fallback;   // fallback (12/11): Eco above 90%, Continue on Codex, cautious chats
 mod engines;   // engines (12/11): chats with Codex (ChatGPT account)
@@ -1124,6 +1125,14 @@ pub(crate) fn turn_view(v: &Value) -> &str { let t = str_of(v, "vista_turno"); i
 fn desk_data() -> Value {
     let mut ss = list_sessions();
     ss.extend(local_models::as_sessions());
+    // worked time (18/11): "turni_oggi" = [[start_s, end_s or null], ...] since local midnight, only durations; the raw record stays on disk
+    let midnight = worked::local_midnight(unix_now());
+    for v in ss.iter_mut() {
+        let working = turn_view(v) == "lavora";
+        let t = worked::today(v, midnight, working, f64_of(v, "da"));
+        if let Some(o) = v.as_object_mut() { o.remove("turni"); }
+        if t.as_array().map_or(false, |a| !a.is_empty()) { v["turni_oggi"] = t; }
+    }
     // the ready ones (Import projects) at the bottom, all together: you have not used them yet
     let rank = |v: &Value| match str_of(v, "vista") { "bloccata" => 0, "aspetta" => 1, "fatta" => 2, "lavora" => 3,
         "ibernata" if v.get("pronta").and_then(|x| x.as_bool()).unwrap_or(false) => 6, "ibernata" => 5, _ => 4 };

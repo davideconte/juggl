@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in Juggl does not work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Please do not paste session transcripts, API keys or anything private: a short description and the steps are enough.
+        Security problems go to hello@juggl.dev, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a Claude Code session in ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Juggl version
+      description: Shown at the top of Settings.
+      placeholder: "0.1.104"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Agent
+      options:
+        - Claude Code
+        - Codex
+        - Both
+        - Not related to an agent
+  - type: dropdown
+    id: build
+    attributes:
+      label: Build
+      options:
+        - Download from juggl.dev
+        - Built from source
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots of the Juggl window (only the window, with nothing private in it) or log lines.

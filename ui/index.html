@@ -4435,7 +4435,6 @@ document.addEventListener("click", async (e) => {
   if (e.target.closest("#v-finder")) return invoke("apri_file", { path: mediaCorrenti[vi]?.f, finder: true });
   if (e.target.closest("#nuova-btn")) return apriNuova();
   if (e.target.id === "velo") return chiudiNuova();
-  const pc = e.target.closest("[data-prog]"); if (pc) { $("#nuova-cartella").value = pc.dataset.cart || ""; document.querySelectorAll("[data-prog]").forEach((x) => x.classList.toggle("on", x === pc)); suggerisciProgetto(); $("#nuova-testo").focus({ preventScroll: true }); return; }
   if (e.target.closest("#nuova-annulla")) return chiudiNuova();
   const tp = e.target.closest("[data-tipo]");
   if (tp) { document.querySelectorAll("[data-tipo]").forEach((x) => x.classList.toggle("on", x === tp)); $("#locale-box").hidden = tp.dataset.tipo !== "locale"; $("#claude-box").hidden = tp.dataset.tipo === "locale"; return; }
@@ -6511,57 +6510,13 @@ function apriScorciatoie() {
 
 // ---------- new session ----------
 // ---------- new chat: you write right away, the project is optional (without = quick chat) ----------
-let progettiNuova = [];
-async function apriNuova() {
-  $("#foglio").classList.remove("salto");
-  const sel = det?.progetto?.id && det.progetto.id !== "locale" ? det.progetto.id : "";
-  const ch = (attr, v, testo, on, extra = "") => `<button class="chip ${on ? "on" : ""}" ${attr}="${esc(v)}" ${extra}>${testo}</button>`;
-  $("#foglio").innerHTML = `<h3>Nuova chat</h3>
-    <textarea id="nuova-testo" class="nuova-grande" placeholder="Scrivi cosa ti serve…"></textarea>
-    <label>Dove <span class="suggerito" id="nuova-sugg"></span></label>
-    <div class="chips" id="nuova-dove">${ch("data-prog", "", `<span class="ic-veloce">⚡</span>Chat veloce`, !sel, 'data-cart=""')}<span class="chips-prog">…</span></div>
-    <label>Modello</label>
-    <div class="chips" id="nuova-mod">${MODELLI.map(([v, t]) => ch("data-mclaude", v, v === "" && /^(fable|opus|sonnet|haiku)$/.test(dati.imp?.modello_nuove || "") ? `${t} (${dati.imp.modello_nuove[0].toUpperCase()}${dati.imp.modello_nuove.slice(1)})` : t, v === "")).join("")}<!-- impostazioni come chat (16/11): il predefinito dice quale modello e' --><span class="chips-pc"></span></div>
-    <details class="nuova-altro"><summary>Altro</summary><label>Cartella</label><input id="nuova-cartella" spellcheck="false" placeholder="vuota = chat veloce"></details>
-    <div class="piedef"><small>Invio per avviare · Maiusc+Invio per andare a capo</small><button class="tasto" id="nuova-annulla">Annulla</button><button class="btn-nero" id="nuova-avvia">Avvia</button></div>`;
-  $("#velo").classList.add("on"); $("#nuova-testo").focus({ preventScroll: true });
-  // PC projects and models arrive later: the sheet opens right away, even if the PC is off
-  invoke("progetti").then((pp) => {
-    progettiNuova = pp;
-    const box = $("#nuova-dove .chips-prog"); if (!box) return;
-    box.outerHTML = pp.map((p) => ch("data-prog", p.id, avatar({ nome: p.nome, progetto: p }) + esc(p.nome), p.id === sel, `data-cart="${esc(p.cartella)}"`)).join("");
-    if (sel) $("#nuova-cartella").value = pp.find((p) => p.id === sel)?.cartella || "";
-  });
-  invoke("modelli_locali").then((ml) => {
-    const box = $("#nuova-mod .chips-pc"); if (!box || !ml.ok || !ml.modelli.length) { box?.remove(); return; }
-    // "Agente PC": the chat does things on the PC (commands, files, web) with the OpenCode agent; the models only reply
-    box.outerHTML = `<span class="sep-chip">PC studio</span>` + (ml.agente ? ch("data-mpc", "agente-pc", "Agente PC", false) : "") + ml.modelli.map((m) => ch("data-mpc", m, esc(m.split(":")[0]), false)).join("");
-  });
-}
-// while you type, it suggests the project from the words (it does not choose by itself)
-function suggerisciProgetto() {
-  const t = ($("#nuova-testo")?.value || "").toLowerCase(), el = $("#nuova-sugg"); if (!el) return;
-  let best = null, punti = 0;
-  for (const p of progettiNuova) {
-    const n = [p.nome, p.id, ...(p.parole || [])].filter(Boolean).reduce((a, w) => a + (w.length > 2 && t.includes(String(w).toLowerCase()) ? 1 : 0), 0);
-    if (n > punti) { punti = n; best = p; }
-  }
-  const scelto = $("#nuova-dove .chip.on")?.dataset.prog || "";
-  el.innerHTML = best && best.id !== scelto ? `Sembra <button class="link" data-sugg="${esc(best.id)}">${esc(best.nome)}</button>` : "";
-}
-document.addEventListener("input", (e) => { if (e.target.id === "nuova-testo") suggerisciProgetto(); });
+// new chat (Nov 18): the window is in ui/new-chat.js (window.apriNuova / window.avviaNuova). Here only the model chips
+// toggle, shared with engines.js (Codex chip) and pc-local-engine.js (models of the PC).
 document.addEventListener("click", (e) => {
-  const sg = e.target.closest("[data-sugg]"); if (sg) { $(`#nuova-dove [data-prog="${CSS.escape(sg.dataset.sugg)}"]`)?.click(); return; }
   const mc = e.target.closest("[data-mclaude],[data-mpc]");
-  if (mc) { document.querySelectorAll("#nuova-mod .chip").forEach((x) => x.classList.toggle("on", x === mc)); $("#nuova-dove")?.classList.toggle("spento", !!mc.dataset.mpc); return; }
+  if (mc && mc.closest("#nuova-mod")) { document.querySelectorAll("#nuova-mod .chip").forEach((x) => x.classList.toggle("on", x === mc)); return; }
 });
-function chiudiNuova() { $("#velo").classList.remove("on"); $("#foglio").classList.remove("salto"); }
-async function avviaNuova() {
-  const testo = $("#nuova-testo").value, pc = $("#nuova-mod .chip.on[data-mpc]")?.dataset.mpc;
-  const r = pc ? await invoke("nuova_locale", { modello: pc, testo })
-    : await invoke("nuova", { cartella: $("#nuova-cartella").value, testo, modello: $("#nuova-mod .chip.on[data-mclaude]")?.dataset.mclaude || "", effort: "" });
-  if (r.ok) { chiudiNuova(); await caricaElenco(); scegli(r.id); } else toast("Non avviata: " + r.msg);
-}
+function chiudiNuova() { $("#velo").classList.remove("on"); $("#foglio").classList.remove("salto", "nc"); }   // new chat (Nov 18): "nc" = new chat window
 // ---------- media ribbon: its own band under the top bar, with recent images and videos of all agents ----------
 // It has a start and an end: on the left "Adesso" and the most recent media, on the right the oldest. You scroll by hand (trackpad,
 // wheel, arrows at the edges, which appear only if there is more to see). Slightly curved film strip: the "lens" follows the
@@ -7425,6 +7380,8 @@ caricaElenco().then(() => { if (window.JUGGL_PRONTO || !window.VEL?.avvioPronto)
 <!-- open as chat (12/11): "Apri come chat" button on sub-agents (ui/open-as-chat.js, src-tauri/src/open_as_chat.rs) -->
 <script src="open-as-chat.js"></script>
 <!-- engines (12/11): Codex chats, see engines.js -->
+<!-- new chat (Nov 18): the "Nuova chat" window (ui/new-chat.js); before engines.js, which adds the Codex chip to it -->
+<script src="new-chat.js"></script>
 <script src="engines.js"></script>
 <!-- live edits (12/11): diff per reply and preview of what it is writing -->
 <script src="live-edits.js"></script>

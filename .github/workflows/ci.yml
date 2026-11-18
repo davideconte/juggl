@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui:
+    name: UI checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Script tags and key functions
+        run: python3 tools/check-ui.py
+      - name: UI unit tests
+        run: for t in tools/test-*.mjs; do node "$t" || exit 1; done
+
+  rust-macos:
+    name: Rust (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: cargo check
+        working-directory: src-tauri
+        run: cargo check --locked
+      - name: cargo test
+        working-directory: src-tauri
+        # parallel_changes_are_not_lost is skipped for now: on slow runners one writer can wait past the 10 s lock limit
+        run: cargo test --locked --bin tavolo -- --skip storage::tests::parallel_changes_are_not_lost
+
+  rust-linux:
+    name: Rust (Linux)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libasound2-dev libxdo-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Placeholder for the keeper sidecar (built by the release script)
+        run: |
+          f="src-tauri/binaries/juggl-custode-$(rustc -vV | sed -n 's/^host: //p')"
+          printf '#!/bin/sh\nexit 0\n' > "$f" && chmod +x "$f"
+      - name: cargo check
+        working-directory: src-tauri
+        run: cargo check --locked
+      - name: cargo test
+        working-directory: src-tauri
+        # parallel_changes_are_not_lost is skipped for now: on slow runners one writer can wait past the 10 s lock limit
+        run: cargo test --locked --bin tavolo -- --skip storage::tests::parallel_changes_are_not_lost

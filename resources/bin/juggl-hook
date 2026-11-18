@@ -152,6 +152,23 @@ def process_chain():
 EVENTS = ('UserPromptSubmit', 'Stop', 'Notification', 'SessionStart', 'SessionEnd')
 
 
+def turni_inizio(s, when):
+    """Worked time (18/11): a turn starts. An earlier one still open (Stop lost) ends here. Only numbers."""
+    t = [x for x in (s.get('turni') or []) if isinstance(x, list) and len(x) == 2]
+    if t and t[-1][1] is None:
+        t[-1] = [t[-1][0], max(when, t[-1][0])]
+    t.append([when, None])
+    t = [x for x in t if x[1] is None or x[1] >= when - 3 * 86400][-300:]
+    s['turni'] = t
+
+
+def turni_fine(s, when):
+    """The open turn ends (Stop)."""
+    t = s.get('turni')
+    if isinstance(t, list) and t and isinstance(t[-1], list) and len(t[-1]) == 2 and t[-1][1] is None:
+        t[-1] = [t[-1][0], max(when, t[-1][0])]
+
+
 def cmd_hook():
     if os.environ.get('TAVOLO_INTERNO'):   # internal Juggl calls (pilot, requests): not sessions
         return
@@ -201,12 +218,14 @@ def cmd_hook():
                   'workspace': os.environ.get('CMUX_WORKSPACE_ID') or s.get('workspace'), 'agg': time.time(),
                   'transcript': tr or s.get('transcript'), 'ultimo_evento': when})
         if ev == 'UserPromptSubmit':
+            turni_inizio(s, when)
             pr = data.get('prompt') or ''
             if not hosted:
                 s.update({'stato': 'lavora', 'da': when, 'domanda': ''})
             if not pr.lstrip().startswith('<'):   # <task-notification> and similar: written by the system, not by the Juggl user
                 s['chiesto'] = short(pr, 200)
         elif ev == 'Stop':
+            turni_fine(s, when)
             if not hosted:
                 s.update({'stato': 'aspetta', 'da': when})
             s['risposta'] = short(msg, 300)

@@ -140,6 +140,7 @@ pub fn run(state_dir: PathBuf) {
         if !tr.is_empty() { v["transcript"] = json!(tr); }
         match ev.as_str() {
             "UserPromptSubmit" => {
+                crate::worked::record_start(v, when);
                 let pr = s("prompt");
                 if !hosted { v["stato"] = json!("lavora"); v["da"] = json!(when); v["domanda"] = json!(""); }
                 if !pr.trim_start().starts_with('<') {
@@ -152,6 +153,7 @@ pub fn run(state_dir: PathBuf) {
                 }
             }
             "Stop" => {
+                crate::worked::record_end(v, when);
                 if !hosted { v["stato"] = json!("aspetta"); v["da"] = json!(when); }
                 v["risposta"] = json!(shorten(&msg, 300));
                 if let Some(t) = &title { v["titolo"] = json!(t); }

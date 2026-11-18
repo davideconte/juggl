@@ -1,5 +1,5 @@
 # Guida di Juggl
-Versione guida: 0.1.99
+Versione guida: 0.1.105
 
 Juggl riunisce in una finestra le chat con gli agenti di programmazione Claude Code e Codex: mostra chi ti aspetta, chi lavora e cosa è finito, e ti fa rispondere dal Mac o dall'iPhone. Windows, Linux e iPhone sono in beta, Android in sviluppo. Su Windows e Linux Ctrl fa le veci di ⌘.
 
@@ -24,6 +24,12 @@ Juggl riunisce in una finestra le chat con gli agenti di programmazione Claude C
 - Tasto destro su una riga: rinomina, fissa, archivia, apri la cartella, elimina, icona e colore del progetto, "Unisci a..." (diventa sotto-chat di un'altra; "Togli da sotto" la separa).
 - In fondo c'è lo stato del Mac. Con poca memoria, "Libera N GB" mette a riposo le chat ferme, con Annulla per 20 secondi.
 - Un sotto-agente diventa una chat sua con "Apri come chat".
+- Cerca (in cima alla barra) trova le chat e anche i progetti, pure quelli senza chat aperte: un clic su un progetto apre la sua chat più recente, "Nuova chat" ne apre una in quel progetto.
+- Nell'intestazione di un progetto compare il tempo lavorato oggi (per esempio "1 h 40 oggi"): il tempo in cui almeno una chat del progetto ha lavorato; chat che lavorano insieme contano una volta.
+- Regia: in un progetto con tre o più chat aperte Juggl apre una chat "<progetto> · regia" che coordina le altre (smista il lavoro, unisce i risultati); di solito non lavora sul codice. Dal tasto nell'intestazione del progetto le scrivi e lei passa il messaggio alla chat giusta.
+- Sotto-chat: chat a sé, con la sua conversazione, legate a una chat principale e mostrate sotto di lei. Si aprono e si risponde come alle altre.
+- Aiutante: le righe con l'etichetta AIUTANTE sono lavori avviati da una chat per il turno in corso. Non sono chat: finiscono da sole e il risultato torna nella chat che le ha avviate.
+- Passando col puntatore su regia, sotto-chat e aiutanti compare un suggerimento che spiega cosa sono.
 
 ## Le chat
 - Nuova chat: ⌘N. Il progetto è facoltativo: senza cartella è una "chat veloce". Se Codex è installato, nel Modello compare "ChatGPT · Codex".

@@ -4,8 +4,7 @@
       "nsis"
     ],
     "externalBin": [
-      "binaries/juggl-custode",
-      "binaries/whisper-cli"
+      "binaries/juggl-custode"
     ],
     "icon": [
       "icons/32x32.png",
