@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benvenuto in Juggl</title>
+<style>
+:root{
+  --bg:#ffffff; --side:#f5f5f4; --ink:#161616; --ink2:#5d5d61; --ink3:#9a9a9f; --line:rgba(0,0,0,.09);
+  --fill:rgba(0,0,0,.045); --fill2:rgba(0,0,0,.08); --ok:#161616;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+  --serif:ui-serif,"New York",Georgia,serif; --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#1b1b1d; --side:#232325; --ink:#f3f3f1; --ink2:#a8a8ad; --ink3:#6e6e73; --line:rgba(255,255,255,.09);
+    --fill:rgba(255,255,255,.06); --fill2:rgba(255,255,255,.1); --ok:#f3f3f1; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:13.5px/1.5 var(--sans);-webkit-font-smoothing:antialiased;cursor:default;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:default}
+input{font:inherit;color:inherit}
+.testa{height:52px;display:flex;align-items:center;justify-content:center;gap:6px}
+.punti{display:flex;gap:6px}
+.punti i{width:6px;height:6px;border-radius:50%;background:var(--fill2);transition:background .25s,width .25s}
+.punti i.on{background:var(--ink);width:18px;border-radius:3px}
+.passi{position:relative;height:calc(100% - 52px - 72px)}
+.passo{position:absolute;inset:0;padding:8px 64px 0;display:flex;flex-direction:column;opacity:0;transform:translateX(18px);pointer-events:none;transition:opacity .28s ease,transform .32s cubic-bezier(.2,.9,.25,1)}
+.passo.on{opacity:1;transform:none;pointer-events:auto}
+.passo.via{transform:translateX(-18px)}
+@media (prefers-reduced-motion:reduce){.passo{transition:none}}
+h1{font:600 30px/1.15 var(--serif);letter-spacing:-.015em;margin:0 0 10px}
+h2{font:600 24px/1.2 var(--serif);letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance}
+.sotto{color:var(--ink2);font-size:14.5px;margin:0 0 22px;max-width:540px;text-wrap:balance}
+.passo.importa .sotto{max-width:640px}
+.centro{align-items:center;text-align:center;justify-content:center;padding-bottom:30px}
+.centro .sotto{margin-left:auto;margin-right:auto}
+.icona{width:88px;height:88px;margin-bottom:22px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))}
+.icona .fondo{fill:#161616}.icona .segni{fill:#fff;color:#fff}
+@media (prefers-color-scheme: dark){.icona .fondo{fill:#f3f3f1}.icona .segni{fill:#161616;color:#161616}.icona{filter:none}}
+.nota .link{padding:0;font-size:12px;text-decoration:underline;text-underline-offset:2px}.nota .link:hover{background:none}
+.campo{display:flex;flex-direction:column;gap:6px;width:280px;text-align:left}
+.campo label{font-size:11.5px;font-weight:600;color:var(--ink3)}
+.campo input{height:36px;border-radius:9px;border:1px solid var(--line);background:var(--fill);padding:0 12px;outline:none;font-size:14px}
+.campo input:focus{border-color:var(--ink3);background:var(--bg)}
+.campo small{color:var(--ink3);font-size:11.5px}
+.righe{display:flex;flex-direction:column;gap:10px;max-width:600px}
+.riga{display:grid;grid-template-columns:30px 1fr auto;gap:14px;align-items:start;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.segno{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--ink3);margin-top:1px}
+.segno svg{width:14px;height:14px}
+.riga.ok .segno{background:var(--ink);color:var(--bg)}
+.riga.no .segno{background:transparent;border:1.5px solid var(--ink)}
+.riga b{display:block;font-weight:600;font-size:14px}
+.riga p{margin:2px 0 0;color:var(--ink2);font-size:13px}
+.riga code{font:12px/1.4 var(--mono);background:var(--fill);padding:5px 8px;border-radius:7px;display:inline-block;margin-top:8px;-webkit-user-select:text;user-select:text;color:var(--ink)}
+.riga .az{display:flex;gap:6px;align-items:center;align-self:center}
+.btn{height:30px;border-radius:8px;padding:0 13px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--bg);transition:background .15s}
+.btn:hover{background:var(--fill)}
+.btn-nero{height:32px;border-radius:9px;padding:0 18px;display:inline-flex;align-items:center;font-weight:500;font-size:13.5px;background:var(--ink);color:var(--bg);transition:opacity .15s}
+.btn-nero:disabled{opacity:.35}
+.link{color:var(--ink2);font-size:13px;padding:6px 8px;border-radius:7px}
+.link:hover{color:var(--ink);background:var(--fill)}
+.nota{color:var(--ink3);font-size:12px;margin-top:14px;max-width:600px}
+.piede{position:absolute;left:0;right:0;bottom:0;height:72px;display:flex;align-items:center;gap:8px;padding:0 28px;border-top:1px solid var(--line)}
+.piede .spazio{flex:1}
+.collega{display:grid;grid-template-columns:1fr;gap:14px;max-width:600px}
+.scheda{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--side)}
+.scheda ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--ink2)}
+.scheda li{margin:3px 0}
+.scheda code{font:12px var(--mono);background:var(--fill2);padding:1px 6px;border-radius:5px;color:var(--ink)}
+.esito{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--ink2);min-height:22px}
+.esito b{color:var(--ink)}
+/* tour: illustration on the left, text on the right */
+.giro{display:grid;grid-template-columns:300px 1fr;gap:34px;align-items:center;height:100%;padding-bottom:28px}
+.giro .testo h2{margin-bottom:10px}
+.giro .testo p{color:var(--ink2);font-size:14px;margin:0 0 12px}
+.tasti{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+kbd{font:500 12px var(--sans);min-width:24px;height:24px;padding:0 7px;border-radius:6px;border:1px solid var(--line);border-bottom-width:2px;display:inline-grid;place-items:center;color:var(--ink);background:var(--bg)}
+.tasti span{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);margin-right:10px}
+.disegno{height:300px;border-radius:16px;border:1px solid var(--line);background:var(--side);overflow:hidden;position:relative}
+.d-side{position:absolute;left:0;top:0;bottom:0;width:150px;border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:6px}
+.d-main{position:absolute;left:150px;right:0;top:0;bottom:0;background:var(--bg);padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+.d-tit{font:600 13px var(--serif);margin:0 4px 4px}
+.d-sez{font-size:9.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin:6px 4px 0}
+.d-riga{display:flex;align-items:center;gap:7px;padding:6px;border-radius:8px}
+.d-riga i{width:16px;height:16px;border-radius:5px;background:var(--fill2);flex:none}
+.d-riga s{height:6px;border-radius:3px;background:var(--fill2);flex:1;text-decoration:none}
+.d-riga em{width:6px;height:6px;border-radius:50%;background:var(--ink);flex:none}
+.d-riga.su{background:var(--ink)}.d-riga.su i,.d-riga.su s{background:rgba(255,255,255,.35)}
+@media (prefers-color-scheme: dark){.d-riga.su i,.d-riga.su s{background:rgba(0,0,0,.3)}.d-riga.su em{background:var(--bg)}}
+.d-riga.su em{background:var(--bg)}
+.d-bolla{align-self:flex-end;width:60%;height:26px;border-radius:12px;background:var(--ink)}
+.d-testo{height:6px;border-radius:3px;background:var(--fill2)}
+.d-testo.c{width:70%}.d-testo.m{width:50%}
+.d-luce{position:absolute;border-radius:12px;box-shadow:0 0 0 2px var(--ink),0 0 0 6px var(--fill2);pointer-events:none;transition:all .4s cubic-bezier(.2,.9,.25,1)}
+.d-rq{display:flex;flex-direction:column;gap:7px;padding:4px}
+.d-rq div{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.d-rq b{font-size:11px;font-weight:600;flex:1}
+.d-rq small{font-size:10px;color:var(--ink3)}
+.d-rq span{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
+.d-rq span.n{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.d-nastro{position:absolute;left:150px;right:0;top:0;height:78px;border-bottom:1px solid var(--line);background:var(--bg);display:flex;gap:6px;padding:12px}
+.d-nastro i{flex:none;width:72px;border-radius:7px;background:var(--fill2)}
+.d-nastro i:nth-child(2n){background:var(--fill)}
+
+/* Import projects: find, propose, create */
+.passo.importa{padding:4px 44px 0}
+.imp-barra{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.imp-barra input{flex:1;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--fill);padding:0 12px 0 32px;outline:none;font-size:13.5px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239a9a9f' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='m10.5 10.5 3 3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-size:15px;background-position:10px center}
+.imp-barra input:focus{border-color:var(--ink3);background-color:var(--bg)}
+.imp-barra .conta{font-size:12px;color:var(--ink3);white-space:nowrap;min-width:84px;text-align:right}
+.imp-gruppo{padding:10px 14px 4px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mute,#8a8a8a)}
+.imp-altre{display:block;margin:10px auto 12px}
+.imp-lista{flex:1;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.imp-v{display:grid;grid-template-columns:20px 30px 1fr auto;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line)}
+.imp-v:last-child{border-bottom:0}
+.imp-v:hover{background:var(--fill)}
+.imp-v.spenta .imp-tx,.imp-v.spenta .imp-ic{opacity:.55}
+.imp-v input{position:absolute;opacity:0;pointer-events:none}
+.casella{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--ink3);display:grid;place-items:center;color:transparent;transition:background .12s,border-color .12s}
+.casella svg{width:12px;height:12px}
+.imp-v input:checked+.casella{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.imp-v input:focus-visible+.casella{box-shadow:0 0 0 3px var(--fill2)}
+.imp-ic{width:30px;height:30px;border-radius:8px;background:var(--fill);display:grid;place-items:center;color:var(--ink2);overflow:hidden}
+.imp-ic svg{width:16px;height:16px}
+.imp-ic img{width:100%;height:100%;object-fit:cover}
+.imp-tx{min-width:0}
+.imp-tx b{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-tx small{display:block;color:var(--ink3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink3);white-space:nowrap}
+.etich{font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)}
+.etich.n{background:var(--fill2);border-color:transparent;color:var(--ink)}
+.imp-meta .qnd{min-width:62px;text-align:right}
+.imp-stato{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink2);text-align:center;padding:24px}
+.imp-stato b{color:var(--ink);font-size:15px}
+.imp-stato small{color:var(--ink3);font-size:12px;max-width:420px}
+.giro-anim{width:22px;height:22px;border-radius:50%;border:2px solid var(--fill2);border-top-color:var(--ink);animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.giro-anim{animation-duration:2.4s}}
+.fatto-segno{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.fatto-segno svg{width:20px;height:20px}
+.imp-vuoto{padding:28px;text-align:center;color:var(--ink3);font-size:13px}
+.passo.importa .nota{margin:10px 0 12px}
+</style>
+<style>
+/* Windows and Linux: fonts bundled in the app instead of the Mac system ones (SF Pro, New York, SF Mono) */
+@font-face{font-family:"Inter";src:url(fonts/inter.woff2) format("woff2");font-weight:100 900;font-display:block;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";src:url(fonts/inter-ext.woff2) format("woff2");font-weight:100 900;font-display:block;unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Source Serif 4";src:url(fonts/source-serif-4.woff2) format("woff2");font-weight:200 900;font-display:block;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122}
+@font-face{font-family:"Source Serif 4";src:url(fonts/source-serif-4-ext.woff2) format("woff2");font-weight:200 900;font-display:block;unicode-range:U+0100-02AF,U+1E00-1EFF,U+20A0-20C0}
+@font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono.woff2) format("woff2");font-weight:100 800;font-display:block;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122}
+@font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono-ext.woff2) format("woff2");font-weight:100 800;font-display:block;unicode-range:U+0100-02AF,U+1E00-1EFF}
+html.win{--sans:"Inter","Segoe UI Variable Text","Segoe UI",sans-serif;--serif:"Source Serif 4",Georgia,serif;--mono:"JetBrains Mono",Consolas,monospace}
+html.win body{-webkit-font-smoothing:antialiased}
+</style>
+<script>if(/Windows|Linux/.test(navigator.userAgent))document.documentElement.classList.add("win")</script>
+</head>
+<body>
+<div class="testa" data-tauri-drag-region><div class="punti" id="punti" data-tauri-drag-region></div></div>
+<div class="passi" id="passi">
+
+  <section class="passo centro" data-passo="ciao">
+    <svg class="icona" viewBox="0 0 100 100" aria-hidden="true"><rect class="fondo" x="4" y="4" width="92" height="92" rx="24"/><g class="segni" transform="translate(19.64 19.64) scale(1.265)"><g transform="translate(9.05 -0.05)"><path d="M14 16V36a8 8 0 0 1-8 8h-2" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><circle cx="23.9" cy="6.1" r="6" fill="#ff5b1f"/></g></g></svg>
+    <h1>Benvenuto in Juggl</h1>
+    <p class="sotto">Tutte le tue sessioni di Claude Code in un posto solo. In cima trovi chi aspetta te.</p>
+    <div class="campo"><label for="nome">Come ti chiami?</label><input id="nome" spellcheck="false" autocomplete="off" maxlength="40"><small>Juggl lo usa quando parla di te alle sessioni.</small></div>
+  </section>
+
+  <section class="passo" data-passo="controlli">
+    <h2>Cosa serve</h2>
+    <p class="sotto">Juggl lavora con Claude Code, che deve essere già installato su questo Mac.</p>
+    <div class="righe" id="controlli"></div>
+    <p class="nota" id="controlli-nota"></p>
+  </section>
+
+  <section class="passo" data-passo="collega">
+    <h2>Collega Juggl a Claude Code</h2>
+    <p class="sotto">Per vedere le sessioni, Juggl aggiunge un piccolo collegamento (un hook) alle impostazioni di Claude Code.</p>
+    <div class="collega">
+      <div class="scheda"><b>Cosa succede</b>
+        <ul>
+          <li>Prima faccio una copia di <code>~/.claude/settings.json</code>.</li>
+          <li>Aggiungo il collegamento di Juggl. Gli hook che hai già restano come sono.</li>
+          <li>Lo togli quando vuoi da Impostazioni, Disinstalla collegamento.</li>
+        </ul>
+      </div>
+      <div class="esito" id="collega-esito"></div>
+    </div>
+  </section>
+
+  <section class="passo" data-passo="permessi">
+    <h2>Avvisi e microfono</h2>
+    <p class="sotto">Juggl chiede i permessi di macOS solo quando servono.</p>
+    <div class="righe">
+      <div class="riga" id="r-notifiche"><span class="segno"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3z"/><path d="M6.5 14a1.6 1.6 0 0 0 3 0"/></svg></span>
+        <div><b>Notifiche</b><p>Ti avviso quando una sessione finisce o ti chiede qualcosa.</p></div>
+        <div class="az"><button class="btn" id="prova-notifica">Prova una notifica</button></div></div>
+      <div class="riga"><span class="segno"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5"/><path d="M3 8a5 5 0 0 0 10 0M8 13v1.5"/></svg></span>
+        <div><b>Microfono, se vuoi dettare</b><p>macOS te lo chiede la prima volta che premi il microfono nella casella. L'audio si trascrive sul Mac e poi si cancella.</p></div><div></div></div>
+    </div>
+  </section>
+
+
+  <section class="passo importa" data-passo="importa">
+    <h2>Importa i tuoi progetti</h2>
+    <p class="sotto" id="imp-sotto" style="margin-bottom:14px">Cerco le chat che hai già fatto con Claude Code e i progetti sul Mac. Resta tutto qui: niente esce dal Mac.</p>
+    <div class="imp-barra"><input id="imp-q" placeholder="Cerca un progetto" spellcheck="false" autocomplete="off" disabled><span class="conta" id="imp-conta"></span><button class="link" id="imp-tutti">Tutti</button><button class="link" id="imp-nessuno">Nessuno</button></div>
+    <div class="imp-barra" id="imp-aggiungi" style="display:none"><input id="imp-percorso" placeholder="Non trovi un progetto? Scrivi la cartella, per esempio ~/lavoro" spellcheck="false" autocomplete="off"><button class="btn" id="imp-aggiungi-b">Aggiungi cartella</button></div>
+    <div class="imp-lista" id="imp-lista"></div>
+    <p class="nota" id="imp-nota">Ogni progetto scelto diventa una sessione pronta, con il contesto già preparato: parte quando le scrivi, prima non consuma niente. Le chat che hai già vanno in Archiviate.</p>
+  </section>
+
+  <section class="passo" data-passo="giro1">
+    <div class="giro">
+      <div class="disegno">
+        <div class="d-side"><div class="d-tit">Juggl</div><div class="d-sez">Ti aspettano</div><div class="d-riga su"><i></i><s></s><em></em></div><div class="d-riga"><i></i><s></s><em></em></div><div class="d-sez">Lavorano</div><div class="d-riga"><i></i><s></s></div><div class="d-riga"><i></i><s></s></div><div class="d-riga"><i></i><s></s></div></div>
+        <div class="d-main"><div class="d-testo c"></div><div class="d-testo m"></div><div class="d-bolla"></div><div class="d-testo c"></div><div class="d-testo"></div><div class="d-testo m"></div></div>
+        <div class="d-luce" style="left:8px;top:64px;width:134px;height:82px"></div>
+      </div>
+      <div class="testo"><h2>Sessioni e chi aspetta te</h2>
+        <p>A sinistra ci sono tutte le sessioni di Claude Code, anche quelle aperte nel Terminale.</p>
+        <p>In cima, <b>Ti aspettano</b>: le sessioni che hanno finito o che ti chiedono una scelta. Sotto, quelle che lavorano.</p>
+        <div class="tasti"><span><kbd>⌘</kbd><kbd>1</kbd> … <kbd>9</kbd> una sessione</span><span><kbd>↑</kbd><kbd>↓</kbd> la precedente o la successiva</span></div></div>
+    </div>
+  </section>
+
+  <section class="passo" data-passo="giro2">
+    <div class="giro">
+      <div class="disegno"><div class="d-rq" style="padding:16px">
+        <div><b>Approvare il testo della pagina</b><span class="n">Serve te</span></div>
+        <div><b>Sistemare il login</b><small>in corso</small><span>In lavoro</span></div>
+        <div><b>Rifare le icone</b><small>fatta 10 min fa</small><span>Fatta</span></div>
+        <div><b>Controllare i link</b><small>senza risposta</small><span>Aperta</span></div>
+      </div></div>
+      <div class="testo"><h2>Richieste</h2>
+        <p>Ogni cosa che chiedi a una sessione diventa una richiesta. Juggl segue se è fatta, in lavoro o se serve te.</p>
+        <p>Quando una sessione chiede il tuo ok, rispondi con Ok, No o Rispondi senza aprire la chat.</p>
+        <div class="tasti"><span><kbd>⌘</kbd><kbd>R</kbd> apri le richieste</span></div></div>
+    </div>
+  </section>
+
+  <section class="passo" data-passo="giro3">
+    <div class="giro">
+      <div class="disegno">
+        <div class="d-side"><div class="d-tit">Juggl</div><div class="d-riga"><i></i><s></s></div><div class="d-riga su"><i></i><s></s></div><div class="d-riga"><i></i><s></s></div></div>
+        <div class="d-nastro"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="d-main" style="top:78px"><div class="d-testo c"></div><div class="d-testo m"></div><div class="d-bolla"></div></div>
+        <div class="d-luce" style="left:154px;top:6px;width:140px;height:66px"></div>
+      </div>
+      <div class="testo"><h2>Il nastro</h2>
+        <p>In alto scorrono le immagini e i video che le sessioni creano o guardano: screenshot, foto, prove.</p>
+        <p>Un clic apre l'anteprima grande. Puoi vedere solo il progetto della chat aperta, o tutti.</p>
+        <div class="tasti"><span><kbd>⇧</kbd><kbd>⌘</kbd><kbd>N</kbd> mostra o nascondi il nastro</span></div></div>
+    </div>
+  </section>
+
+  <section class="passo" data-passo="giro4">
+    <div class="giro">
+      <div class="disegno"><div class="d-rq" style="padding:16px">
+        <div><kbd>⌘</kbd><kbd>N</kbd><b>Nuova sessione</b></div>
+        <div><kbd>⌘</kbd><kbd>K</kbd><b>Cerca in tutte le chat</b></div>
+        <div><kbd>⌘</kbd><kbd>J</kbd><b>Chiedi a Juggl</b></div>
+        <div><kbd>⌘</kbd><kbd>.</kbd><b>Ferma la sessione</b></div>
+        <div><kbd>⌘</kbd><kbd>/</kbd><b>Tutte le scorciatoie</b></div>
+      </div></div>
+      <div class="testo"><h2>Le scorciatoie principali</h2>
+        <p><b>Juggl</b>, la chat fissata in cima, è il tuo assistente: smista le richieste alle sessioni giuste, apre quelle nuove e ti dice a che punto siete.</p>
+        <p>Le Impostazioni sono nel menu Juggl. Da lì puoi rivedere questo giro quando vuoi.</p>
+        <div class="tasti"><span><kbd>⌘</kbd><kbd>,</kbd> Impostazioni</span></div></div>
+    </div>
+  </section>
+</div>
+<div class="piede">
+  <button class="link" id="indietro">Indietro</button>
+  <span class="spazio"></span>
+  <button class="link" id="salta"></button>
+  <button class="btn-nero" id="avanti">Continua</button>
+</div>
+<script>
+// Windows and Linux: PC texts instead of Mac ones, Ctrl instead of ⌘; the microphone is not there yet (no Whisper)
+(() => {
+  if (!/Windows|Linux/.test(navigator.userAgent)) return;
+  const swap = [[/i permessi di macOS solo quando servono\./g, "gli avvisi del sistema solo quando servono."], [/questo Mac/g, "questo PC"], [/sul Mac\b/g, "sul PC"],
+    [/dal Mac\b/g, "dal PC"], [/macOS/g, "Windows"], [/~\/\.claude\/settings\.json/g, "settings.json di Claude Code"], [/⌘/g, "Ctrl+"], [/⌥/g, "Alt+"], [/⇧/g, "Maiusc+"]];
+  const RE = /Mac|macOS|⌘|⌥|⇧|~\/\.claude/;
+  const fixUp = (n) => {
+    const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+    while (w.nextNode()) { const x = w.currentNode; if (RE.test(x.data)) { let t = x.data; for (const [a, b] of swap) t = t.replace(a, b); x.data = t; } }
+  };
+  const drop = () => {
+    document.querySelectorAll('[data-passo="permessi"] .riga:not(#r-notifiche)').forEach(r => { if (/Microfono/.test(r.textContent)) r.remove(); });
+    const h = document.querySelector('[data-passo="permessi"] h2'); if (h) h.textContent = "Avvisi";
+    fixUp(document.body);
+    new MutationObserver((ls) => ls.forEach(l => l.addedNodes.forEach(n => { if (n.nodeType === 1) fixUp(n); else if (n.nodeType === 3 && n.parentNode) fixUp(n.parentNode); }))).observe(document.body, { subtree: true, childList: true });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", drop); else drop();
+})();
+</script>
+<script>
+const T = window.__TAURI__;
+const inv = (c, a) => T.core.invoke(c, a);
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const SI = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg>';
+const NO = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 4v5M8 12h.01"/></svg>';
+const soloGiro = location.hash === "#giro", soloImporta = location.hash === "#importa";
+const PASSI = [...document.querySelectorAll(".passo")].map((x) => x.dataset.passo).filter((p) => soloImporta ? p === "importa" : !soloGiro || p.startsWith("giro"));
+let i = 0, controlliOk = false, collegato = false;
+
+function vai(n) {
+  n = Math.max(0, Math.min(PASSI.length - 1, n));
+  document.querySelectorAll(".passo").forEach((el) => {
+    const k = PASSI.indexOf(el.dataset.passo);
+    el.classList.toggle("on", k === n); el.classList.toggle("via", k >= 0 && k < n);
+  });
+  i = n;
+  $("#punti").innerHTML = PASSI.map((_, k) => `<i class="${k === n ? "on" : ""}"></i>`).join("");
+  const p = PASSI[n], giro = p.startsWith("giro"), lastStep = n === PASSI.length - 1;
+  $("#indietro").style.visibility = n === 0 ? "hidden" : "visible";
+  $("#salta").textContent = giro && !lastStep ? "Salta il giro" : p === "collega" && !collegato ? "Non ora" : p === "controlli" && !controlliOk ? "Continua lo stesso"
+    : p === "importa" && IMP.fase !== "fatto" ? (soloImporta ? "Annulla" : "Non ora") : "";
+  $("#salta").hidden = !$("#salta").textContent;
+  const av = $("#avanti");
+  av.disabled = false;
+  av.textContent = lastStep ? (soloGiro ? "Fatto" : "Apri Juggl") : p === "ciao" ? "Inizia" : p === "collega" && !collegato ? "Collega" : p === "importa" ? "Fai il giro" : "Continua";
+  if (p === "importa") { testoImporta(); if (!IMP.fase) importaCerca(); }
+  if (p === "controlli") { av.disabled = !controlliOk; controlli(); }
+  if (p === "ciao") setTimeout(() => $("#nome").focus(), 300);
+}
+
+async function controlli() {
+  const r = await inv("controlli");
+  const cl = r.claude, py = r.python;
+  const row = (ok, titleText, text, az = "") => `<div class="riga ${ok ? "ok" : "no"}"><span class="segno">${ok ? SI : NO}</span><div><b>${titleText}</b>${text}</div><div class="az">${az}</div></div>`;
+  const WIN = /Windows/.test(navigator.userAgent);
+  const cmd = WIN ? "irm https://claude.ai/install.ps1 | iex" : "curl -fsSL https://claude.ai/install.sh | bash";
+  let h = row(cl.ok, "Claude Code", cl.ok ? `<p>Trovato${cl.versione ? ", versione " + esc(cl.versione.replace(/\s*\(.*\)/, "")) : ""}.</p>`
+    : `<p>Non lo trovo. Apri ${WIN ? "PowerShell" : "Terminale"} e incolla questa riga, poi torna qui:</p><code>${esc(cmd)}</code>`,
+    cl.ok ? "" : `<button class="btn" data-copia="${esc(cmd)}">Copia</button>`);
+  if (!py.non_serve) h += row(py.ok, "Python 3", py.ok ? `<p>Trovato, versione ${esc(py.versione)}. Lo usa il collegamento con Claude Code.</p>`
+    : `<p>Serve per il collegamento con Claude Code. Lo installano gli strumenti per sviluppatori di Apple, gratis, in pochi minuti.</p>`,
+    py.ok ? "" : `<button class="btn" id="installa-py">Installa</button>`);
+  $("#controlli").innerHTML = h;
+  controlliOk = cl.ok && (py.ok || py.non_serve);
+  $("#controlli-nota").innerHTML = controlliOk ? "" : `Quando hai finito, <button class="link" id="ricontrolla">ricontrolla</button>.`;
+  if (PASSI[i] === "controlli") { $("#avanti").disabled = !controlliOk; $("#salta").textContent = controlliOk ? "" : "Continua lo stesso"; $("#salta").hidden = controlliOk; }
+}
+
+async function collega() {
+  const e = $("#collega-esito");
+  e.textContent = "Collego…";
+  const r = await inv("hook_installa");
+  if (!r.ok) { e.innerHTML = `<span>Non riuscito: ${esc(r.msg || "")}</span>`; return false; }
+  collegato = true;
+  e.innerHTML = `<span class="segno" style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg)">${SI.replace("<svg ", '<svg width="12" height="12" ')}</span><span><b>Collegato.</b> ${r.backup ? "Copia del file prima della modifica: " + esc(r.backup.split("/").pop()) : "Era già collegato."}</span>`;
+  return true;
+}
+
+
+// ---------- Import projects (src-tauri/src/import.rs): find, propose, create ----------
+const IMP = { fase: "", voci: [], scelte: new Set(), q: "", esito: null, info: null, altre: false };
+const SPUNTA = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg>';
+const IC = {
+  node: '<path d="M8 1.8 13.5 5v6L8 14.2 2.5 11V5z"/>',
+  rust: '<circle cx="8" cy="8" r="2.4"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"/>',
+  python: '<path d="M5.5 2.5h4a2 2 0 0 1 2 2v3h-6a2 2 0 0 0-2 2v1a2 2 0 0 1-1-2v-4a2 2 0 0 1 2-2z"/><path d="M10.5 13.5h-4a2 2 0 0 1-2-2v-3h6a2 2 0 0 0 2-2v-1a2 2 0 0 1 1 2v4a2 2 0 0 1-2 2z"/>',
+  xcode: '<rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="m6 10.5 2-5 2 5M6.7 9h2.6"/>',
+  php: '<path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5l3.5 3.5-3.5 3.5"/>',
+  go: '<path d="M2.5 6.5h3M1.5 8.5h3"/><circle cx="10" cy="8" r="3.5"/>',
+  git: '<circle cx="4.5" cy="4" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><circle cx="11.5" cy="6.5" r="1.6"/><path d="M4.5 5.6v4.8M11.5 8.1c0 2-3 2-5.6 3"/>',
+  claude: '<path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4"/>',
+  docs: '<path d="M4 1.8h5l3 3v9.4H4z"/><path d="M9 1.8v3h3M6 8.5h4M6 11h4"/>',
+  chat: '<path d="M2.5 4a1.5 1.5 0 0 1 1.5-1.5h8A1.5 1.5 0 0 1 13.5 4v5.5A1.5 1.5 0 0 1 12 11H7l-3 2.5V11a1.5 1.5 0 0 1-1.5-1.5z"/>',
+  cartella: '<path d="M2 4.5a1 1 0 0 1 1-1h3.2l1.3 1.5H13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>',
+};
+const icona = (v) => v.logo ? `<img src="${esc(T.core.convertFileSrc(v.logo))}" alt="" onerror="this.replaceWith(document.createRange().createContextualFragment(this.dataset.ic))" data-ic="${esc(svgTipo(v.tipo))}">` : svgTipo(v.tipo);
+const svgTipo = (t) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${IC[t] || IC.cartella}</svg>`;
+const NOMI_TIPO = { node: "Node.js", rust: "Rust", python: "Python", xcode: "Xcode", php: "PHP", go: "Go", git: "Git", claude: "Claude", docs: "Documenti", chat: "Solo chat", cartella: "Cartella" };
+function fa(t) {
+  if (!t) return "";
+  const g = (Date.now() / 1000 - t) / 86400;
+  if (g < 1) return "oggi"; if (g < 2) return "ieri"; if (g < 14) return Math.floor(g) + " g fa";
+  if (g < 60) return Math.floor(g / 7) + " sett fa"; if (g < 365) return Math.floor(g / 30) + " mesi fa";
+  const a = Math.floor(g / 365); return a === 1 ? "1 anno fa" : a + " anni fa";
+}
+// guided proposal: recent chats and active repos in view; the rest under "Mostra altre" (or by searching for a name)
+const NOMI_GRUPPO = { chat: "Chat recenti con Claude", repo: "Repository attivi", progetto: "Progetti attivi", altre: "Altre cartelle" };
+const visibiliImp = () => { const q = IMP.q.trim().toLowerCase(); return IMP.voci.filter((v) => (q ? (v.nome + " " + v.breve).toLowerCase().includes(q) : v.principale !== false || IMP.altre)); };
+function testoImporta() {
+  if (PASSI[i] !== "importa") return;
+  const n = IMP.scelte.size, av = $("#avanti");
+  av.disabled = IMP.fase === "cerca" || IMP.fase === "crea";
+  av.textContent = IMP.fase === "fatto" ? (soloImporta ? "Apri Juggl" : "Fai il giro") : IMP.fase === "cerca" || IMP.fase === "crea" ? "Importa" : n ? `Importa ${n === 1 ? "1 progetto" : n + " progetti"}` : soloImporta ? "Chiudi" : "Continua";
+  $("#salta").textContent = IMP.fase === "fatto" ? "" : soloImporta ? "Annulla" : "Non ora"; $("#salta").hidden = !$("#salta").textContent;
+  $("#imp-conta").textContent = IMP.fase === "lista" ? `${n} di ${visibiliImp().length}` : "";
+  for (const id of ["#imp-q", "#imp-tutti", "#imp-nessuno"]) $(id).disabled = IMP.fase !== "lista";
+  $(".imp-barra").style.visibility = IMP.fase === "fatto" || IMP.fase === "errore" ? "hidden" : "";
+  $("#imp-nota").style.visibility = IMP.fase === "fatto" ? "hidden" : "";
+}
+function disegnaImporta() {
+  const L = $("#imp-lista");
+  if (IMP.fase === "cerca") {
+    const a = IMP.info || {};
+    const row = a.fase === "disco" ? `Cerco i progetti in ${esc(a.cartella || "")}` : a.totale ? `Leggo le chat di Claude Code: ${a.lette} di ${a.totale}` : "Leggo le chat di Claude Code";
+    L.innerHTML = `<div class="imp-stato"><span class="giro-anim"></span><b>Cerco…</b><span>${row}</span><small>${a.fase === "disco" ? `${a.trovati || 0} progetti trovati finora` : "&nbsp;"}</small></div>`;
+  } else if (IMP.fase === "crea") {
+    L.innerHTML = `<div class="imp-stato"><span class="giro-anim"></span><b>Preparo le sessioni…</b><small>Raccolgo README, ultimi commit e chat precedenti di ogni progetto.</small></div>`;
+  } else if (IMP.fase === "fatto") {
+    const e = IMP.esito || {};
+    const parts = [];
+    if (e.sessioni) parts.push(e.sessioni === 1 ? "1 sessione pronta" : e.sessioni + " sessioni pronte");
+    if (e.chat) parts.push(e.chat === 1 ? "1 chat in Archiviate" : e.chat + " chat in Archiviate");
+    L.innerHTML = `<div class="imp-stato"><span class="fatto-segno">${SPUNTA}</span><b>${parts.length ? "Fatto: " + parts.join(", ") : "Niente di nuovo da importare"}</b><small>Le trovi nell'elenco, nel gruppo Pronte: aprine una e scrivi per iniziare. Le chat che avevi si riprendono da Archiviate, in fondo all'elenco.</small></div>`;
+  } else if (IMP.fase === "errore") {
+    L.innerHTML = `<div class="imp-stato"><b>Non sono riuscito a cercare</b><small>${esc(IMP.errore || "")}</small><button class="btn" id="imp-riprova">Riprova</button></div>`;
+  } else {
+    const vv = visibiliImp();
+    let lastGroup = "";
+    const hiddenRows = IMP.q.trim() || IMP.altre ? 0 : IMP.voci.filter((v) => v.principale === false).length;
+    L.innerHTML = vv.length ? vv.map((v) => {
+      const k = IMP.voci.indexOf(v), on = IMP.scelte.has(k);
+      const et = [];
+      if (v.chat_n) et.push(`<span class="etich ${v.chat_nuove ? "n" : ""}">${v.chat_n === 1 ? "1 chat" : v.chat_n + " chat"}</span>`);
+      if (v.gia) et.push(`<span class="etich">Già in Juggl</span>`);
+      else if (!v.esiste) et.push(`<span class="etich">Cartella non trovata</span>`);
+      else if (v.nuvola) et.push(`<span class="etich">${/Dropbox/.test(v.breve) ? "Dropbox" : "iCloud"}</span>`);
+      const below = v.senza_progetto ? "Chat aperte nella cartella Inizio: vanno solo in Archiviate" : `${esc(v.breve)}${v.tipo !== "cartella" && v.tipo !== "chat" ? " · " + NOMI_TIPO[v.tipo] : ""}`;
+      const g = v.principale === false ? "altre" : (NOMI_GRUPPO[v.gruppo] ? v.gruppo : "chat");
+      const titleText = g !== lastGroup ? (lastGroup = g, `<div class="imp-gruppo">${NOMI_GRUPPO[g]}</div>`) : "";
+      return titleText + `<label class="imp-v ${v.gia || !v.esiste ? "spenta" : ""}" title="${esc(v.cartella)}"><input type="checkbox" data-k="${k}" ${on ? "checked" : ""}><span class="casella">${SPUNTA}</span><span class="imp-ic">${icona(v)}</span><span class="imp-tx"><b>${esc(v.nome)}</b><small>${below}</small></span><span class="imp-meta">${et.join("")}<span class="qnd">${fa(v.modificato)}</span></span></label>`;
+    }).join("") + (hiddenRows ? `<button class="btn imp-altre" id="imp-altre">Mostra altre (${hiddenRows})</button>` : "") : `<div class="imp-vuoto">${IMP.voci.length ? "Nessun progetto con questo nome" : "Non ho trovato progetti né chat. Puoi aprire una sessione nuova da Juggl con ⌘N."}</div>`;
+  }
+  testoImporta();
+}
+let ascoltoImp = null;
+async function importaAggiungi() {
+  const inputEl = $("#imp-percorso"); const t = (inputEl.value || "").trim(); if (!t) return;
+  const r = await inv("importa_aggiungi_radice", { percorso: t });
+  if (!r.ok) { $("#imp-sotto").textContent = r.msg || "Non riuscito"; return; }
+  inputEl.value = ""; importaCerca();
+}
+document.addEventListener("click", (e) => { if (e.target.closest("#imp-aggiungi-b")) importaAggiungi(); });
+document.addEventListener("keydown", (e) => { if (e.target.id === "imp-percorso" && e.key === "Enter") { e.preventDefault(); importaAggiungi(); } });
+async function importaCerca() {
+  // the field to add a folder is needed where the Mac has different usual folders (Windows, Ubuntu): there it shows right away
+  if (!/Mac OS/.test(navigator.userAgent)) { const a = $("#imp-aggiungi"); if (a) a.style.display = ""; }
+  IMP.fase = "cerca"; IMP.info = null; IMP.altre = false; disegnaImporta();
+  if (!ascoltoImp) ascoltoImp = await T.event.listen("importa_avanzamento", (e) => { if (IMP.fase !== "cerca") return; IMP.info = e.payload; disegnaImporta(); });
+  try {
+    const r = await inv("importa_cerca");
+    IMP.voci = r.voci || []; IMP.scelte = new Set(IMP.voci.map((v, k) => (v.scelta ? k : -1)).filter((k) => k >= 0));
+    IMP.fase = "lista";
+    const nc = IMP.voci.reduce((a, v) => a + (v.chat_n || 0), 0);
+    $("#imp-sotto").textContent = IMP.voci.length ? `Ho trovato ${IMP.voci.length === 1 ? "1 progetto" : IMP.voci.length + " progetti"}${nc ? ` e ${nc} chat già fatte con Claude Code` : ""}. Spuntati quelli usati negli ultimi 60 giorni.` : "Non ho trovato progetti né chat di Claude Code su questo Mac.";
+  } catch (err) { IMP.fase = "errore"; IMP.errore = String(err); }
+  disegnaImporta();
+}
+async function importaCrea() {
+  const cartelle = [...IMP.scelte].map((k) => IMP.voci[k]?.cartella).filter(Boolean);
+  IMP.fase = "crea"; disegnaImporta();
+  try { IMP.esito = await inv("importa_crea", { cartelle }); IMP.fase = "fatto"; }
+  catch (err) { IMP.fase = "errore"; IMP.errore = String(err); }
+  disegnaImporta();
+}
+document.addEventListener("change", (e) => {
+  const c = e.target.closest?.("#imp-lista input[data-k]"); if (!c) return;
+  const k = +c.dataset.k; if (c.checked) IMP.scelte.add(k); else IMP.scelte.delete(k);
+  testoImporta();
+});
+document.addEventListener("input", (e) => { if (e.target.id === "imp-q") { IMP.q = e.target.value; disegnaImporta(); } });
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#imp-altre")) { IMP.altre = true; disegnaImporta(); return; }
+  if (e.target.closest("#imp-tutti")) { visibiliImp().forEach((v) => IMP.scelte.add(IMP.voci.indexOf(v))); disegnaImporta(); }
+  if (e.target.closest("#imp-nessuno")) { visibiliImp().forEach((v) => IMP.scelte.delete(IMP.voci.indexOf(v))); disegnaImporta(); }
+  if (e.target.closest("#imp-riprova")) importaCerca();
+});
+
+async function fine(giro) { await inv("benvenuto_fine", { giro }); }
+
+$("#avanti").onclick = async () => {
+  const p = PASSI[i];
+  if (p === "ciao") { const n = $("#nome").value.trim(); if (n) await inv("profilo_imposta", { chiave: "nome", valore: n }); }
+  if (p === "collega" && !collegato) { if (!(await collega())) return; vai(i); return; }
+  if (p === "importa") {
+    if (IMP.fase === "lista" && IMP.scelte.size) return importaCrea();
+    if (soloImporta) return inv("importa_chiudi");
+  }
+  if (i === PASSI.length - 1) return fine(true);
+  vai(i + 1);
+};
+$("#indietro").onclick = () => vai(i - 1);
+$("#salta").onclick = () => {
+  const p = PASSI[i];
+  if (p.startsWith("giro")) return fine(false);
+  if (p === "importa" && soloImporta) return inv("importa_chiudi");
+  vai(i + 1);
+};
+document.addEventListener("click", async (e) => {
+  const c = e.target.closest("[data-copia]");
+  if (c) { await navigator.clipboard.writeText(c.dataset.copia); c.textContent = "Copiata"; setTimeout(() => (c.textContent = "Copia"), 1600); return; }
+  if (e.target.closest("#installa-py")) { await inv("installa_strumenti_apple"); $("#controlli-nota").innerHTML = `Segui la finestra di Apple. Quando ha finito, <button class="link" id="ricontrolla">ricontrolla</button>.`; return; }
+  if (e.target.closest("#ricontrolla")) return controlli();
+  if (e.target.closest("#prova-notifica")) {
+    const r = await inv("prova_notifica");
+    const b = e.target.closest("#prova-notifica");
+    b.textContent = r.ok ? "Inviata" : "Non riuscita";
+    if (r.ok) $("#r-notifiche").classList.add("ok");
+  }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.id !== "imp-q" && e.target.type !== "checkbox" && !$("#avanti").disabled) { e.preventDefault(); $("#avanti").click(); }
+  if (e.key === "Escape" && soloGiro) fine(false);
+  if (e.key === "Escape" && soloImporta && IMP.fase !== "crea") inv("importa_chiudi");
+});
+vai(0);
+inv("profilo").then((p) => {
+  $("#nome").value = p.nome && p.nome !== "l'utente" ? p.nome : "";
+  collegato = !!p.hook?.completo;
+  if (collegato) $("#collega-esito").innerHTML = `<span><b>Già collegato.</b> Non serve cambiare niente.</span>`;
+  vai(i);
+}).catch((e) => console.error("profilo", e));
+</script>
+</body>
+</html>

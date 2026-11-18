@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+# juggl-gestito: Juggl installs and updates this file. If you edit it by hand, remove this line.
+"""juggl-hook: gli hook di Claude Code per Juggl, e le sessioni nel terminale.
+
+  juggl-hook                 le sessioni aperte (chi aspetta in cima)
+  juggl-hook --json          lo stesso in JSON (per altri script)
+  juggl-hook hook            ingresso degli hook Claude/Codex (legge JSON da stdin, scrive stato/<sessione>.json)
+  juggl-hook presenza        stampa "al-mac" o "via" (esce 0 se al Mac, 1 se via)
+
+Solo libreria standard, Python 3.9 o piu' recente. L'hook non deve mai fallire ne' rallentare: ogni errore viene ingoiato.
+I file condivisi si scrivono con comune.py (lucchetto X.lock, temporaneo unico, rename): stessa regola del cuore di Juggl.
+"""
+# rename (Nov 14): it used to be called bin/tavolo; existing users keep it under that name (same content).
+import time
+T0 = time.time()                      # first useful instant of the hook, if the process start time cannot be read
+import json, os, re, sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import comune
+
+APP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+STATE_DIR = os.environ.get('TAVOLO_STATO_PROVA') or os.path.join(APP_DIR, 'stato')   # fake folder, for tests only
+PRESENCE = os.path.join(APP_DIR, 'presenza.json')
+LOG = os.path.join(APP_DIR, 'tavolo.log') if os.path.exists(os.path.join(APP_DIR, 'tavolo.log')) else os.path.join(APP_DIR, 'hook.log')   # rename (Nov 14): the old log for existing users
+NAMES = os.path.expanduser('~/.claude/state/nomi-sessioni.json')
+
+AT_MAC_IF_IDLE_UNDER = 5 * 60     # keyboard/mouse idle time under which you are "at the Mac"
+AWAY_IF_IDLE_OVER = 10 * 60       # above this threshold you are "away" (hysteresis: no constant flipping)
+WAIT_MAX_HOURS = 12                  # a session idle longer than this is not "waiting", it is just stalled
+
+
+def log(*a):
+    try:
+        with open(LOG, 'a', encoding='utf-8') as f:
+            f.write(time.strftime('%Y-%m-%d %H:%M:%S ') + ' '.join(str(x) for x in a) + '\n')
+    except OSError:
+        pass
+
+
+read = comune.leggi
+write = comune.scrivi
+
+
+def short(s, n=140):
+    s = re.sub(r'\s+', ' ', (s or '')).strip()
+    return s if len(s) <= n else s[:n - 1] + '…'
+
+
+def alive(pid):
+    try:
+        pid = int(pid or 0)
+        if pid <= 0:            # os.kill(0, 0) applies to the whole group: it would look "alive" even without a pid
+            return False
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
+
+
+# ---------- hook ----------
+
+def last_message(transcript):
+    """Last assistant text from the transcript (only if the hook does not already pass it)."""
+    try:
+        with open(transcript, 'rb') as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 200_000))
+            lines = f.read().decode('utf-8', 'ignore').splitlines()
+        for r in reversed(lines):
+            try:
+                d = json.loads(r)
+            except Exception:
+                continue
+            m = d.get('message') or {}
+            if d.get('type') != 'assistant' or m.get('role') != 'assistant':
+                continue
+            c = m.get('content')
+            texts = [x.get('text', '') for x in c if isinstance(x, dict) and x.get('type') == 'text'] if isinstance(c, list) else [c or '']
+            t = ' '.join(x for x in texts if x).strip()
+            if t:
+                return t
+    except Exception:
+        pass
+    return ''
+
+
+def transcript_title(path):
+    """Session title from the Claude transcript (manual rename or AI title), the last one wins."""
+    t = None
+    try:
+        with open(path, 'rb') as f:
+            f.seek(0, 2); n = f.tell(); f.seek(0)
+            chunks = [f.read(min(60_000, n))]
+            if n > 60_000:
+                f.seek(max(60_000, n - 300_000)); chunks.append(f.read())
+        for chunk in chunks:
+            for m in re.finditer(rb'"(?:customTitle|aiTitle)":"((?:[^"\\]|\\.)*)"', chunk):
+                t = json.loads(b'"' + m.group(1) + b'"')
+    except Exception:
+        pass
+    return t
+
+
+SHELL = ('sh', 'bash', 'zsh', 'dash', 'env')
+
+
+def _info_libproc():
+    """pid -> (ppid, comm, start in seconds) via libproc: no `ps`, under a millisecond per process."""
+    import ctypes, struct
+    lib = ctypes.CDLL('/usr/lib/libproc.dylib')
+    buf = ctypes.create_string_buffer(136)            # struct proc_bsdinfo (PROC_PIDTBSDINFO = 3)
+
+    def info(pid):
+        if lib.proc_pidinfo(int(pid), 3, ctypes.c_uint64(0), buf, 136) != 136:
+            raise OSError('proc_pidinfo %s' % pid)
+        r = buf.raw
+        ppid = struct.unpack_from('I', r, 16)[0]
+        comm = r[48:64].split(b'\0')[0].decode('utf-8', 'replace')
+        sec, usec = struct.unpack_from('QQ', r, 120)
+        return ppid, comm, sec + usec / 1e6
+    return info
+
+
+def _info_ps(pid):
+    import subprocess
+    out = subprocess.run(['ps', '-o', 'ppid=,comm=', '-p', str(pid)], capture_output=True, text=True, timeout=3).stdout.split(None, 1)
+    if len(out) < 2:
+        raise OSError('ps %s' % pid)
+    return int(out[0]), out[1].strip(), None
+
+
+def process_chain():
+    """(pid of claude/codex, event time). The hook may run inside an intermediate shell that dies right away: climb up
+    while there are shells. The time is the start of the agent's direct child process: with async hooks two events
+    may finish in reverse order, but they start in the right order."""
+    try:
+        info = _info_libproc()
+    except Exception:
+        info = _info_ps
+    try:
+        p, _, when = info(os.getpid())
+        for _ in range(4):
+            pp, comm, start = info(p)
+            if os.path.basename(comm).lstrip('-') not in SHELL:
+                break
+            p, when = pp, start or when
+        return p, (when or T0)
+    except Exception:
+        return os.getppid(), T0
+
+
+EVENTS = ('UserPromptSubmit', 'Stop', 'Notification', 'SessionStart', 'SessionEnd')
+
+
+def cmd_hook():
+    if os.environ.get('TAVOLO_INTERNO'):   # internal Juggl calls (pilot, requests): not sessions
+        return
+    try:
+        data = json.loads(sys.stdin.read() or '{}')
+    except Exception:
+        return
+    sid = data.get('session_id') or data.get('sessionId')
+    ev = data.get('hook_event_name') or data.get('hookEventName') or ''
+    # event first (Codex waits for the hook): everything else only if there is something to write
+    if not sid or ev not in EVENTS:
+        return
+    if ev == 'Notification':
+        text = data.get('message') or ''
+        # "Claude is waiting for your input" also arrives after a normal Stop: only the permission counts
+        if not ('permission' in text.lower() or data.get('notification_type') == 'permission_prompt'):
+            return
+    name = re.sub(r'[^A-Za-z0-9_.-]', '_', str(sid))
+    if not name.strip('._'):
+        return
+    os.makedirs(STATE_DIR, exist_ok=True)
+    p = os.path.join(STATE_DIR, name + '.json')
+    tr = data.get('transcript_path') or ''
+    if not os.path.exists(p):
+        # chat deleted by Juggl (no more state or transcript): a late event does not bring it back
+        if ev == 'SessionEnd' or (ev in ('Stop', 'Notification') and tr and not os.path.exists(tr)):
+            return
+    elif ev == 'SessionEnd' and not (tr and os.path.exists(tr)):
+        return
+    pid, when = process_chain()
+    agent = 'codex' if ('codex' in tr or os.environ.get('CODEX_HOME') or 'turn_id' in data) else 'claude'
+    # slow reads outside the lock
+    msg = (data.get('last_assistant_message') or last_message(tr)) if ev == 'Stop' else ''
+    tt = None
+    if ev in ('Stop', 'SessionStart'):
+        tt = transcript_title(tr or (read(p, {}) or {}).get('transcript') or '')
+
+    def change(s):
+        if not isinstance(s, dict):
+            s = {}
+        if float(s.get('ultimo_evento') or 0) > when:
+            return comune.SALTA            # a newer event already went through: this one is late
+        # session hosted in the app: only Juggl writes the turn state (hosted.rs), here only the texts
+        hosted = s.get('ospite') == 'tavolo' and pid and int(s.get('pid') or 0) == int(pid)
+        s.update({'sessione': sid, 'agente': s.get('agente') or agent, 'cwd': data.get('cwd') or s.get('cwd'),
+                  'pid': pid, 'surface': os.environ.get('CMUX_SURFACE_ID') or s.get('surface'),
+                  'workspace': os.environ.get('CMUX_WORKSPACE_ID') or s.get('workspace'), 'agg': time.time(),
+                  'transcript': tr or s.get('transcript'), 'ultimo_evento': when})
+        if ev == 'UserPromptSubmit':
+            pr = data.get('prompt') or ''
+            if not hosted:
+                s.update({'stato': 'lavora', 'da': when, 'domanda': ''})
+            if not pr.lstrip().startswith('<'):   # <task-notification> and similar: written by the system, not by the Juggl user
+                s['chiesto'] = short(pr, 200)
+        elif ev == 'Stop':
+            if not hosted:
+                s.update({'stato': 'aspetta', 'da': when})
+            s['risposta'] = short(msg, 300)
+            if tt: s['titolo'] = tt
+        elif ev == 'Notification':
+            if hosted:
+                return comune.SALTA
+            s.update({'stato': 'bloccata', 'da': when, 'domanda': short(data.get('message') or '', 200)})
+        elif ev == 'SessionStart':   # new or resumed session: shows up in Juggl right away
+            if not hosted and s.get('stato') in (None, '', 'ibernata', 'chiusa', 'archiviata'):   # resumed in the terminal: back in Juggl
+                s.update({'stato': 'ferma', 'da': when})
+            if tt: s['titolo'] = tt
+        elif ev == 'SessionEnd':
+            if s.get('stato') in ('ibernata', 'archiviata') or s.get('ospite') == 'tavolo':   # hibernated, archived or managed by the app: the app decides
+                return comune.SALTA
+            s.update({'stato': 'chiusa', 'da': when})
+        return s
+
+    comune.aggiorna(p, change, {}, attesa=3)
+
+
+# ---------- sessions in the terminal ----------
+
+def name_of(s):
+    names = read(NAMES, {})
+    n = (names.get(s.get('sessione')) or {}).get('name')
+    if n:
+        return n
+    if s.get('titolo'):
+        return s['titolo']
+    cwd = s.get('cwd') or ''
+    if '/scratchpad' in cwd or cwd in ('', '/'):
+        return (s.get('chiesto') or s.get('sessione', '')[:8])[:40]
+    return os.path.basename(cwd.rstrip('/')) or cwd
+
+
+def sessions():
+    out = []
+    if not os.path.isdir(STATE_DIR):
+        return out
+    now = time.time()
+    for f in os.listdir(STATE_DIR):
+        if not f.endswith('.json'):
+            continue
+        p = os.path.join(STATE_DIR, f)
+        s = read(p, None)
+        if not isinstance(s, dict) or not s.get('sessione'):
+            continue            # app state files that are not sessions
+        if s.get('importata') and not s.get('titolo') and not s.get('surface'):
+            continue   # processes left alive with no terminal or name: not sessions you work on
+        if s.get('stato') == 'chiusa' or not alive(s.get('pid', 0)):
+            # no cleanup here: hibernated ones stay until you close or delete them; Juggl removes old files.
+            continue
+        st = s.get('stato')
+        if st == 'aspetta' and now - s.get('da', 0) > WAIT_MAX_HOURS * 3600:
+            st = 'ferma'
+        s['vista'] = st
+        s['nome'] = name_of(s)
+        out.append(s)
+    order = {'bloccata': 0, 'aspetta': 1, 'lavora': 2, 'ferma': 3}
+    # waiting: longest waiting on top; working: most recent on top
+    out.sort(key=lambda s: (order.get(s['vista'], 9), s.get('da', 0) if s['vista'] in ('bloccata', 'aspetta') else -s.get('da', 0)))
+    return out
+
+
+def time_since(t):
+    m = int((time.time() - t) // 60)
+    if m < 1: return 'ora'
+    if m < 60: return f'{m} min'
+    h = m // 60
+    return f'{h} h' if h < 24 else f'{h // 24} g'
+
+
+def cmd_show(js=False):
+    ss = sessions()
+    if js:
+        print(json.dumps(ss, ensure_ascii=False, indent=1)); return
+    labels = {'bloccata': 'TI ASPETTANO', 'aspetta': 'TI ASPETTANO', 'lavora': 'LAVORANO', 'ferma': 'FERME'}
+    last = None
+    if not ss:
+        print('Nessuna sessione aperta.'); return
+    for s in ss:
+        e = labels[s['vista']]
+        if e != last:
+            print(('\n' if last else '') + e); last = e
+        mark = {'bloccata': '!', 'aspetta': '●', 'lavora': '◐', 'ferma': '○'}[s['vista']]
+        line = s.get('domanda') if s['vista'] == 'bloccata' else s.get('risposta') if s['vista'] in ('aspetta', 'ferma') else s.get('chiesto')
+        print(f"  {mark} {s['nome'][:28]:<28} {time_since(s.get('da', 0)):>6}  {short(line, 90)}")
+
+
+# ---------- presence at the Mac ----------
+
+def idle_seconds():
+    import subprocess
+    try:
+        out = subprocess.run(['ioreg', '-c', 'IOHIDSystem'], capture_output=True, text=True, timeout=5).stdout
+        m = re.search(r'"HIDIdleTime" = (\d+)', out)
+        return int(m.group(1)) / 1e9 if m else 0
+    except Exception:
+        return 0
+
+
+def at_mac():
+    """With hysteresis: back 'at the Mac' under 5 min of idle time, 'away' above 10."""
+    p = read(PRESENCE, {'al_mac': True})
+    i = idle_seconds()
+    if i < AT_MAC_IF_IDLE_UNDER:
+        return True
+    if i > AWAY_IF_IDLE_OVER:
+        return False
+    return p.get('al_mac', True)
+
+
+def cmd_presence():
+    a = at_mac()
+    print('al-mac' if a else 'via')
+    sys.exit(0 if a else 1)
+
+
+def main():
+    a = sys.argv[1:]
+    if not a or a[0] == '--json':
+        cmd_show(js=bool(a)); return
+    c = a[0]
+    if c == 'hook':
+        try: cmd_hook()
+        except Exception as e: log('hook errore', repr(e))
+        return
+    if c == 'presenza': cmd_presence(); return
+    print(__doc__); sys.exit(2)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,5 @@
+Caratteri inclusi in Juggl per Windows e Linux (sul Mac si usano quelli di sistema), tutti sotto SIL Open Font License 1.1:
+- Inter (Rasmus Andersson) - https://github.com/rsms/inter
+- Source Serif 4 (Adobe) - https://github.com/adobe-fonts/source-serif
+- JetBrains Mono (JetBrains) - https://github.com/JetBrains/JetBrainsMono
+File woff2 (sottoinsiemi latino e latino esteso) da fontsource.

@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+# juggl-gestito: Juggl installs and updates this file. If you edit it by hand, remove this line.
+"""juggl: lo strumento dell'assistente generale per vedere e guidare tutte le tue sessioni.
+
+  juggl sessioni                       tutte le sessioni aperte: stato, progetto, ultimo messaggio
+  juggl leggi <sessione> [n]           ultimi n messaggi di una sessione (default 12)
+  juggl manda <sessione> "testo" [--subito]   scrive a una sessione (in coda se sta lavorando)
+  juggl nuova <progetto|cartella> "testo"     apre una sessione nuova (Claude) nella cartella del progetto e stampa il suo link
+  juggl progetti                       progetti noti con cartella
+  juggl cerca "parole" [n]             cerca in tutti i messaggi (anche chat vecchie, chiuse, archiviate): una riga per chat col link al messaggio
+  juggl link <sessione>                il link interno di una sessione: [nome](juggl://sessione/<id>), che nell'app diventa un chip cliccabile
+  juggl contesto <progetto>            memoria del progetto + sessioni recenti, da passare a una sessione nuova
+  juggl richiesta "titolo breve" <sessione>   registra una tua richiesta e a chi l'hai passata
+  juggl richieste [tutte]              le tue richieste per stato (risposte nuove, serve te, in lavoro, fatte con 'tutte') + registro di Juggl
+  juggl stato <n> fatta|in_corso|bloccata|annullata ["nota"]   aggiorna una richiesta
+  juggl migra --elenco                 sessioni ancora nel terminale cmux: chi si puo' spostare nel custode subito, chi aspettare
+  juggl migra <sessione>|--tutte       le sposta dal terminale cmux al custode di Juggl (solo se ferme; --tutte salta Juggl sviluppo)
+  juggl migra <sessione> --quando-ferma   la sposta da solo appena finisce il turno (per la sessione che lancia il comando)
+  juggl migra <sessione> --forza-turno    la sposta anche se l'ultimo turno nel transcript e' rimasto aperto (solo se Claude Code la dice idle e la casella e' vuota)
+  juggl cartelle <cartella...> | --libera | --elenco   regia automatica (12/11): dichiara le cartelle su cui lavora questa chat; se un'altra chat del gruppo le tiene e lavora, ti ferma
+<sessione> = id, oppure parte del nome (es. sito, app, "Sessione 2").
+"""
+import json, os, re, subprocess, sys, urllib.request, glob, time
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import comune   # safe writes of shared files (X.lock lock + unique temp file), like the Rust core
+
+# rename (Nov 14): the data folder is the script's own (~/tavolo for existing users, ~/.juggl for new users)
+_FOLDER = os.environ.get('JUGGL_BASE') or os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+_BRIDGE = json.load(open(os.path.join(_FOLDER, 'ponte.json')))
+BASE = 'http://127.0.0.1:' + str(os.environ.get('JUGGL_PORTA') or _BRIDGE.get('porta') or 47800)
+TOKEN = _BRIDGE['token']
+
+def api(p, body=None, wait=60):
+    r = urllib.request.Request(BASE + p, data=json.dumps(body).encode() if body is not None else None,
+                               headers={'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, method='POST' if body is not None else 'GET')
+    with urllib.request.urlopen(r, timeout=wait) as x: return json.loads(x.read() or b'null')
+
+def short(t, n=160): t = re.sub(r'\s+', ' ', t or '').strip(); return t if len(t) <= n else t[:n - 1] + '…'
+
+def sessions():
+    t = api('/api/tavolo')
+    return [s for s in t['sessioni'] if s['sessione'] != t.get('juggl')]   # all except Juggl itself
+
+def find(q):
+    ss = sessions(); ql = q.lower()
+    for s in ss:
+        if s['sessione'] == q or s['sessione'].startswith(q): return s
+    matches = [s for s in ss if ql == (s.get('nome') or '').lower()] or [s for s in ss if ql in (s.get('nome') or '').lower()] \
+        or [s for s in ss if ql in ((s.get('progetto') or {}).get('nome') or '').lower()]
+    if not matches: sys.exit(f'nessuna sessione trovata per "{q}"')
+    if len(matches) > 1: print('più sessioni corrispondono, uso la più recente:', ', '.join(c['nome'] for c in matches[:4]), file=sys.stderr)
+    return sorted(matches, key=lambda s: -(s.get('da') or 0))[0]
+
+def ago(t):
+    m = int((time.time() - (t or 0)) / 60)
+    return 'ora' if m < 1 else f'{m} min' if m < 60 else f'{m // 60} h' if m < 1440 else f'{m // 1440} g'
+
+def link(s, t=''):
+    """Internal link the app shows as a clickable chip: [name](juggl://sessione/<id>) or, for a message, juggl://messaggio/<id>/<time>."""
+    name = re.sub(r'[\[\]]', '', s.get('nome') or 'chat')
+    return f"[{name}](juggl://messaggio/{s['sessione']}/{t})" if t else f"[{name}](juggl://sessione/{s['sessione']})"
+
+def cmd_sessions():
+    for s in sessions():
+        p = (s.get('progetto') or {}).get('nome') or ''
+        last = s.get('risposta') if s['vista'] != 'lavora' else 'sta lavorando su: ' + (s.get('chiesto') or '')
+        print(f"[{s['vista']}{', fissata' if s.get('fissata') else ''}] {s['nome']}  ({p}{', ' if p else ''}{ago(s.get('da'))})  {link(s)}\n    {short(last)}")
+
+def cmd_link(q):
+    print(link(find(q)))
+
+def cmd_read(q, n=12):
+    s = find(q); d = api('/api/sessione?id=' + s['sessione'])
+    print(f"# {d.get('nome')} [{d.get('vista')}] cartella: {d.get('cwd')}")
+    for e in [e for e in d.get('eventi', []) if e['tipo'] in ('tu', 'agente')][-int(n):]:
+        print(f"\n{'TU' if e['tipo'] == 'tu' else 'AGENTE'}: {short(e.get('testo'), 1500)}")
+    if d.get('adesso'): print(f"\n(adesso: {d['adesso'].get('nome')} {d['adesso'].get('testo')})")
+
+def cmd_send(q, text, immediate=False):
+    s = find(q); r = api('/api/invia', {'id': s['sessione'], 'testo': text, 'subito': immediate})
+    print(f"{s['nome']}: {r.get('esito')} {r.get('msg') or ''}")
+
+def projects(): return api('/api/progetti')
+
+def cmd_projects():
+    for p in projects(): print(f"{p.get('id')}: {p.get('nome')}  cartella={p.get('cartella') or '-'}")
+
+def cmd_new(where, text):
+    p = next((p for p in projects() if where.lower() in (p.get('id', '') + ' ' + p.get('nome', '')).lower()), None)
+    folder = (p or {}).get('cartella') or where
+    r = api('/api/nuova', {'cartella': folder, 'testo': text, 'modello': ''})
+    if not r.get('ok'): sys.exit(f"non aperta in {folder}: {r.get('msg')}")
+    name = (p or {}).get('nome') or os.path.basename(folder.rstrip('/')) or 'nuova chat'
+    print(f"aperta in {folder}. Passala con questo link (diventa un chip che la apre): [{name}](juggl://sessione/{r['id']})")
+
+def cmd_search(words, n=8):
+    """The app's message index (same as ⌘K): one line per chat, with the link to the best message. If the app does not answer, grep the transcripts."""
+    try:
+        from urllib.parse import quote
+        r = api('/api/cerca-tutto?limite=200&q=' + quote(words))
+    except Exception as e:
+        print(f'(indice dell\'app non raggiungibile: {e}; cerco nei file, senza link al messaggio)', file=sys.stderr)
+        return cmd_search_files(words, n)
+    juggl = api('/api/tavolo').get('juggl')
+    groups = {}
+    for x in r.get('risultati', []):
+        if x['sessione'] == juggl or x['sessione'].startswith('wa:') or re.search(r'/tavolo/prova/?$', x.get('cwd') or ''): continue
+        groups.setdefault(x['sessione'], []).append(x)
+    if not groups: print(f'nessun messaggio con "{words}". Prova con meno parole o sinonimi (solo i nomi: "logo sito", non la frase intera).'); return
+    for sid, rr in list(groups.items())[:int(n)]:
+        x = next((y for y in rr if y['chi'] in ('tu', 'agente')), rr[0])   # the best spot: a real message, not a command
+        state = x.get('vista') or 'chiusa'
+        print(f"- {link({'sessione': sid, 'nome': x.get('nome') or x.get('titolo')}, x['t'])}  [{state}, {len(rr)} messaggi, {x['t'][:10]}]\n    {x['chi']}: {short(x.get('frase', '').replace(chr(2), '').replace(chr(3), ''), 220)}")
+
+def cmd_search_files(words, n=12):
+    root = os.path.expanduser('~/.claude/projects')
+    try:
+        out = subprocess.run(['rg', '-l', '-i', '-F', '--glob', '*.jsonl', '--max-depth', '2', words, root], capture_output=True, text=True, timeout=60).stdout.split()
+    except FileNotFoundError:
+        out = subprocess.run(['grep', '-l', '-i', '-F', '-r', '--include=*.jsonl', words, root], capture_output=True, text=True, timeout=120).stdout.split()
+    out = sorted(set(out), key=lambda f: -os.path.getmtime(f))[:int(n)]
+    for f in out:
+        title, snippet = '', ''
+        with open(f, errors='ignore') as fh:
+            for r in fh:
+                if not title and ('"customTitle"' in r or '"aiTitle"' in r):
+                    m = re.search(r'"(?:customTitle|aiTitle)":"([^"]*)"', r); title = m.group(1) if m else ''
+                if not snippet and words.lower() in r.lower() and '"text"' in r:
+                    i = r.lower().find(words.lower()); snippet = short(r[max(0, i - 120): i + 200].replace('\\n', ' '), 300)
+                if title and snippet: break
+        sid = os.path.basename(f)[:-6]
+        print(f"- {link({'sessione': sid, 'nome': title or sid[:8]})}  ({time.strftime('%d/%m %H:%M', time.localtime(os.path.getmtime(f)))})\n    {snippet}")
+
+def cmd_context(prog):
+    mem = os.path.expanduser('~/.claude/projects/-/memory')
+    fs = [f for f in glob.glob(mem + '/*.md') if prog.lower() in os.path.basename(f).lower()]
+    print('Memorie del progetto (leggile prima di iniziare):'); [print('  ' + f) for f in fs] or print('  nessuna trovata')
+    print('Sessioni aperte del progetto:')
+    for s in sessions():
+        if prog.lower() in ((s.get('nome') or '') + ' ' + ((s.get('progetto') or {}).get('nome') or '')).lower():
+            print(f"  {link(s)} [{s['vista']}]")
+
+REG = os.path.join(_FOLDER, 'richieste.json')   # rename (Nov 14)
+
+def read_registry():
+    r = comune.leggi(REG, [])
+    return r if isinstance(r, list) else []
+
+def cmd_request(title, q):
+    s = find(q) if q else None
+    done = {}
+    def add(r):
+        n = (max([x.get('n', 0) for x in r]) + 1) if r else 1
+        r.append({'n': n, 't': time.time(), 'titolo': title, 'sessione': s['sessione'] if s else '', 'nome': s['nome'] if s else '', 'stato': 'in_corso' if s else 'aperta', 'nota': ''})
+        done['n'] = n
+    comune.aggiorna(REG, add, [])
+    print(f'richiesta {done["n"]} registrata' + (f' e passata a {s["nome"]}' if s else ''))
+
+REG_AI = os.path.join(_FOLDER, 'richieste-ai.json')   # rename (Nov 14)
+AI_STATES = [('nuove', 'Risposte nuove (fatte, non ancora lette)'), ('serve_te', 'Serve te'),
+            ('in_lavoro', 'In lavoro'), ('fatta', 'Fatte di recente')]
+
+def ai_state(x, now):
+    # same rules as the app: states from older versions first, stalled after 12 hours with no news
+    st = {'nuova': 'in_lavoro', 'in_corso': 'in_lavoro', 'ferma': 'in_lavoro', 'non_presa': 'in_lavoro', 'da_controllare': 'fatta', 'chiusa': 'fatta'}.get(x.get('stato'), x.get('stato'))
+    if st == 'fatta' and not x.get('letta') and not x.get('scartata') and x.get('stato') in ('fatta', 'da_controllare') and 'letta' in x: st = 'nuove'
+    stalled = st == 'in_lavoro' and (x.get('ferma') or x.get('stato') == 'ferma' or now - (x.get('aggiornata') or 0) > 12 * 3600)
+    return st, stalled
+
+def cmd_ai_requests(show_all=False):
+    items = (comune.leggi(REG_AI, {}) or {}).get('voci', [])
+    now = time.time(); groups = {k: [] for k, _ in AI_STATES}
+    for x in items:
+        st, stalled = ai_state(x, now)
+        if st in groups: groups[st].append((x, stalled))
+    counts = ', '.join(f"{len(groups[k])} {t.split(' (')[0].lower()}" for k, t in AI_STATES if groups[k] and k != 'fatta')
+    print(f"Le tue richieste capite da Juggl: {counts or 'niente di aperto'}")
+    for k, title in AI_STATES:
+        entries = sorted(groups[k], key=lambda y: -(y[0].get('aggiornata') or 0))
+        if not entries or (k == 'fatta' and not show_all): continue
+        print(f"\n{title}: {len(entries)}" + (f" ({sum(1 for _, fe in entries if fe)} ferme da piu' di 12 ore)" if k == 'in_lavoro' and any(fe for _, fe in entries) else ''))
+        for x, stalled in entries:
+            elsewhere = [a.get('nome') for a in x.get('anche_in') or [] if a.get('nome')]
+            extra = (f", anche in {', '.join(elsewhere)}" if elsewhere else '') + (f", chiesta {x['volte']} volte" if (x.get('volte') or 1) > 1 else '') \
+                + (', FERMA' if stalled else '') + (', non presa: ricordata in automatico' if x.get('stato') == 'non_presa' else '')
+            print(f"  - {x.get('titolo')}  [{x.get('nome') or 'sessione'}{extra}]  ({ago(x.get('aggiornata'))})  id={x.get('id')}")
+            detail = (x.get('motivo') + '. ' if k == 'serve_te' and x.get('motivo') else '') + (x.get('risposta') or '')
+            if detail: print(f"      {short(detail, 240)}")
+
+def cmd_requests(show_all=False):
+    cmd_ai_requests(show_all)
+    reg = [x for x in read_registry() if show_all or x['stato'] not in ('fatta', 'annullata')]
+    if reg: print('\nRegistro di Juggl (richieste passate a mano):')
+    for x in reg:
+        print(f"{x['n']}. [{x['stato']}] {x['titolo']}  -> {x.get('nome') or 'nessuna sessione'}  ({ago(x['t'])}){'  nota: ' + x['nota'] if x.get('nota') else ''}")
+
+def cmd_status(n, state, note=''):
+    found = []
+    def change(r):
+        for x in r:
+            if x.get('n') == int(n): x['stato'] = state; x['nota'] = note or x.get('nota', ''); x['agg'] = time.time(); found.append(x)
+        return r if found else comune.SALTA
+    comune.aggiorna(REG, change, [])
+    print('ok' if found else f'richiesta {n} non trovata')
+
+def cmd_migrate(a):
+    body = {'prova': '--elenco' in a or '--prova' in a, 'tutte': '--tutte' in a, 'quando_ferma': '--quando-ferma' in a, 'forza_turno': '--forza-turno' in a}
+    ids = [x for x in a if not x.startswith('--')]
+    if ids:
+        q = ids[0]
+        c = [s for s in api('/api/tavolo')['sessioni'] if s['sessione'] == q or s['sessione'].startswith(q)]
+        if len(c) != 1: sys.exit(f'sessione "{q}" non trovata (usa l\'id o le sue prime cifre)' if not c else f'"{q}" e\' ambiguo')
+        body['id'] = c[0]['sessione']
+    elif not (body['prova'] or body['tutte']):
+        body['prova'] = True
+    r = api('/api/migra', body, wait=3600)
+    if not r.get('ok'): sys.exit('errore: ' + r.get('msg', ''))
+    if 'elenco' in r:
+        el = r['elenco']
+        if not el: print('nessuna sessione Claude aperta nel terminale cmux'); return
+        for x in el:
+            mark = 'PRONTA ' if x['pronta'] else 'ASPETTA'
+            extra = ' (Juggl sviluppo: solo a parte, con --quando-ferma)' if x.get('sviluppo') else ''
+            print(f"{mark} {x['nome']}  id={x['id'][:8]}{extra}" + ('' if x['pronta'] else f"\n        {x['motivo']}"))
+        return
+    if 'esiti' in r:
+        for x in r['esiti']:
+            print(f"[{x['esito']}] {x.get('nome') or ''} id={x['id'][:8]}  {x.get('msg', '')}")
+            for p in x.get('passi', []): print('    ' + p)
+        return
+    print(r.get('msg', 'ok'))
+
+if __name__ == '__main__':
+    a = sys.argv[1:]
+    if not a: print(__doc__); sys.exit(0)
+    c = a[0]
+    if c == 'sessioni': cmd_sessions()
+    elif c == 'leggi': cmd_read(a[1], a[2] if len(a) > 2 else 12)
+    elif c == 'manda': cmd_send(a[1], a[2], '--subito' in a)
+    elif c == 'nuova': cmd_new(a[1], a[2] if len(a) > 2 else '')
+    elif c == 'progetti': cmd_projects()
+    elif c == 'cerca': cmd_search(a[1], a[2] if len(a) > 2 else 8)
+    elif c == 'link': cmd_link(a[1])
+    elif c == 'contesto': cmd_context(a[1])
+    elif c == 'richiesta': cmd_request(a[1], a[2] if len(a) > 2 else '')
+    elif c == 'richieste': cmd_requests(len(a) > 1 and a[1] == 'tutte')
+    elif c == 'stato': cmd_status(a[1], a[2], a[3] if len(a) > 3 else '')
+    elif c == 'migra': cmd_migrate(a[1:])
+    # automatic coordinator (Nov 12): "who touches what" registry (bin/cartelle.py)
+    elif c == 'cartelle': import cartelle; sys.exit(cartelle.cli(a[1:]))
+    else: print(__doc__); sys.exit(2)

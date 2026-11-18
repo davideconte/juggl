@@ -1,0 +1,18 @@
+# builds and dependencies
+target/
+node_modules/
+src-tauri/binaries/whisper-cli-*
+# backup copies and old material (git is used from now on)
+*.bak*
+bak-*/
+ui-bak/
+patch-*/
+*.patch
+.pubblica.pid
+build.log
+pubblica.log
+.DS_Store
+uscite/
+
+__pycache__/
+*.pyc

@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "windows": [
+    "main",
+    "visore",
+    "benvenuto"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "process:allow-restart",
+    "notification:default"
+  ]
+}

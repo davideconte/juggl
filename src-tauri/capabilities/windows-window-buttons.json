@@ -1,0 +1,13 @@
+{
+  "identifier": "windows-finestra",
+  "description": "Windows: tasti riduci/ingrandisci/chiudi disegnati da Juggl (la finestra non ha la barra di sistema)",
+  "platforms": ["windows"],
+  "windows": ["main"],
+  "permissions": [
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-close"
+  ]
+}

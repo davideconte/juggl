@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Juggl</title>
+<style>
+:root{--mono:ui-monospace,"SF Mono",Menlo,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:rgba(10,10,11,.97);color:#f2f2f0;font:13px var(--sans);-webkit-font-smoothing:antialiased;user-select:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:default}
+.app{display:flex;flex-direction:column;height:100%;animation:entra .2s ease-out}
+@keyframes entra{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+.top{height:52px;flex:none;display:flex;align-items:center;gap:6px;padding:0 14px 0 84px}
+.tit{flex:1;min-width:0}.nome{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta{font:11.5px var(--mono);opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t{height:32px;padding:0 12px;border-radius:9px;display:inline-flex;align-items:center;gap:6px;color:#e8e8e6}.t:hover{background:rgba(255,255,255,.12)}
+.t svg{width:16px;height:16px}
+.corpo[hidden]{display:none}.foglio.pieno{display:flex;flex-direction:column;overflow:hidden}.foglio.pieno>.carta{flex:1;min-height:0;height:auto}.foglio.pieno>.carta.pagina{width:min(900px,calc(100% - 48px))}.foglio.pieno>.nota-doc{flex:none;width:min(780px,calc(100% - 48px))}
+.attesa-doc{width:22px;height:22px;border:2px solid rgba(255,255,255,.18);border-top-color:#fff;border-radius:50%;animation:gira .8s linear infinite}
+.corpo{flex:1;min-height:0;position:relative;overflow:hidden;cursor:zoom-in}.corpo.zoom{cursor:grab}.corpo.tira{cursor:grabbing}
+.corpo img.pronta{opacity:1}
+.corpo .attesa{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px;border:2px solid rgba(255,255,255,.18);border-top-color:#fff;border-radius:50%;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.corpo img{position:absolute;left:50%;top:50%;max-width:none;width:1px;height:1px;opacity:0;transition:opacity .18s ease-out;transform-origin:0 0;border-radius:6px;box-shadow:0 12px 48px rgba(0,0,0,.5);-webkit-user-drag:none}
+.corpo video{position:absolute;inset:20px 40px;width:calc(100% - 80px);height:calc(100% - 40px);object-fit:contain;outline:none}
+.fr{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center;z-index:2;opacity:0;transition:opacity .15s}
+.corpo:hover .fr{opacity:1}.fr:hover{background:rgba(255,255,255,.2)}.fr.sx{left:24px}.fr.dx{right:24px}
+.zoomlab{position:absolute;right:20px;bottom:14px;font:11.5px var(--mono);background:rgba(0,0,0,.45);padding:4px 9px;border-radius:7px;opacity:.8}
+.piede{flex:none;height:78px;display:flex;align-items:center;gap:16px;padding:0 24px 14px}
+/* selector on the left, strip in the center (centered while it fits, then it scrolls); the right side balances the left one */
+.p-lato{flex:1 1 0;min-width:max-content;display:flex;align-items:center}.p-lato.dx{min-width:0}
+.scorri{position:relative;flex:0 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;transition:opacity .14s ease-out}
+.scorri.via{opacity:0}
+.fila{display:flex;gap:8px;width:max-content;padding:2px 0}
+.fila button{width:56px;height:56px;border-radius:8px;overflow:hidden;opacity:.45;flex:none;border:2px solid transparent;background:rgba(255,255,255,.06);transition:opacity .15s}
+.fila button.on{opacity:1;border-color:#fff}.fila button:hover{opacity:.85}
+.fila img,.fila video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+/* "Questo progetto / Tutti": segmented control, the chosen part slides under the text */
+.seg{position:relative;display:inline-flex;padding:2px;border-radius:8px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.1)}
+.seg button{position:relative;z-index:1;height:24px;padding:0 11px;border-radius:6px;font-size:12px;font-weight:500;color:rgba(242,242,240,.55);white-space:nowrap;transition:color .2s}
+.seg button.on{color:#f2f2f0}.seg button:not(.on):hover{color:rgba(242,242,240,.85)}
+.seg i{position:absolute;z-index:0;top:2px;bottom:2px;left:0;width:0;border-radius:6px;background:rgba(255,255,255,.17);box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 .5px 0 rgba(255,255,255,.14);transition:transform .26s cubic-bezier(.3,.9,.3,1),width .26s cubic-bezier(.3,.9,.3,1)}
+.fonte{animation:appare .2s ease-out}@keyframes appare{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.scorri,.seg i,.seg button,.fonte{transition:none;animation:none}}
+/* which session the photo comes from (media strip) and the two ways to go there */
+.fonte{display:flex;align-items:center;gap:9px;min-width:0;max-width:260px;padding-right:14px;margin-right:4px;border-right:1px solid rgba(255,255,255,.12)}
+.fonte[hidden],.t[hidden]{display:none}
+.f-logo{flex:none;width:28px;height:28px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#fff;color:#111;font:600 10px var(--sans)}
+.f-logo img{width:100%;height:100%;object-fit:contain}
+.f-tx{min-width:0}.f-nome{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.f-quando{font-size:11.5px;opacity:.55;white-space:nowrap}
+.t.primario{background:#f2f2f0;color:#111;font-weight:500}.t.primario:hover{background:#fff}
+.t kbd{font:11px var(--sans);opacity:.55;margin-left:2px}
+.sep{width:1px;height:20px;background:rgba(255,255,255,.12);margin:0 4px}
+.posto{font:11.5px var(--mono);opacity:.5;margin-right:4px;white-space:nowrap}
+/* documents: a sheet to read instead of the image canvas */
+.foglio{flex:1;min-height:0;overflow:auto;-webkit-user-select:text;user-select:text;outline:none;scroll-behavior:auto;overscroll-behavior:contain;animation:appare .18s ease-out}
+.foglio[hidden]{display:none}
+.carta{--pg:#fbfbfa;--tx:#1b1b1d;--tx2:#5d5d61;--tx3:#8e8e93;--ln:rgba(0,0,0,.09);--fl:rgba(0,0,0,.045);
+  max-width:780px;margin:8px auto 40px;padding:52px 64px 64px;background:var(--pg);color:var(--tx);border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.45);font:15px/1.65 var(--sans)}
+@media (prefers-color-scheme: dark){.carta{--pg:#1e1e20;--tx:#ececea;--tx2:#a8a8ad;--tx3:#7c7c81;--ln:rgba(255,255,255,.09);--fl:rgba(255,255,255,.06);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 18px 60px rgba(0,0,0,.5)}}
+.carta ::selection{background:rgba(120,120,128,.35)}
+.carta h1,.carta h2,.carta h3,.carta h4,.carta h5{line-height:1.25;margin:1.5em 0 .5em;font-weight:650;letter-spacing:-.01em}
+.carta h1{font-size:28px;margin-top:0}.carta h2{font-size:21px}.carta h3{font-size:17px}.carta h4,.carta h5{font-size:15px}
+.carta>:first-child{margin-top:0}
+.carta p{margin:0 0 .9em}.carta ul,.carta ol{margin:0 0 .9em;padding-left:1.4em}.carta li{margin:.2em 0}.carta li.spunta{list-style:none;margin-left:-1.3em}
+.carta li.spunta i{display:inline-grid;place-items:center;width:15px;height:15px;border:1.5px solid var(--tx3);border-radius:4px;margin-right:8px;vertical-align:-2px;font-style:normal;font-size:10px}
+.carta li.spunta.fatta i{background:var(--tx);border-color:var(--tx);color:var(--pg)}
+.carta blockquote{margin:0 0 .9em;padding:2px 0 2px 16px;border-left:3px solid var(--ln);color:var(--tx2)}
+.carta hr{border:0;border-top:1px solid var(--ln);margin:2em 0}
+.carta a{color:inherit;text-decoration:underline;text-decoration-color:var(--tx3);text-underline-offset:2px;cursor:pointer}
+.carta code{font:13px var(--mono);background:var(--fl);padding:1px 5px;border-radius:5px}
+.carta pre{margin:0 0 1em;padding:14px 16px;background:var(--fl);border-radius:9px;overflow:auto}.carta pre code{background:none;padding:0;font-size:12.5px;line-height:1.55}
+.carta table{border-collapse:collapse;margin:0 0 1em;font-size:13.5px;display:block;overflow:auto;max-width:100%}
+.carta th,.carta td{border:1px solid var(--ln);padding:6px 10px;text-align:left;vertical-align:top}.carta th{background:var(--fl);font-weight:600}
+.carta.semplice{white-space:pre-wrap;word-wrap:break-word}
+.carta.codice{max-width:1100px;padding:18px 0;font:12.5px/1.6 var(--mono);white-space:pre;overflow:auto;counter-reset:r}
+.carta.codice .r{display:block;padding:0 28px 0 0}.carta.codice .r::before{counter-increment:r;content:counter(r);display:inline-block;width:52px;padding-right:18px;text-align:right;color:var(--tx3);-webkit-user-select:none;user-select:none}
+.carta.codice.senza .r::before{display:none}.carta.codice.senza .r{padding-left:28px}
+.carta.tabella{max-width:none;width:max-content;min-width:min(780px,100%);padding:0;overflow:visible}
+.carta.tabella table{display:table;margin:0;font:12.5px/1.45 var(--sans)}
+.carta.tabella th{position:sticky;top:0;z-index:1;background:var(--pg);box-shadow:inset 0 -1px 0 var(--ln)}
+.carta.tabella td,.carta.tabella th{border:0;border-bottom:1px solid var(--ln);border-right:1px solid var(--ln);padding:6px 12px;white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis}
+.carta.tabella td.n{text-align:right;font-variant-numeric:tabular-nums}
+.carta.tabella tr:hover td{background:var(--fl)}
+.carta.pagina{padding:0;overflow:hidden;background:#fff;max-width:900px;margin:8px auto 24px}
+.carta.pagina iframe{border:0;width:100%;height:100%;display:block;background:#fff}
+.carta.pdf{max-width:none;margin:0 24px 24px;padding:0;background:#525254;overflow:hidden}
+.carta.pdf iframe{border:0;width:100%;height:100%;display:block}
+.carta.foto{padding:0;overflow:hidden;width:fit-content;max-width:min(900px,calc(100% - 48px));background:#fff}.carta.foto img{display:block;max-width:100%;height:auto}
+.nota-doc{max-width:780px;margin:0 auto 10px;padding:9px 14px;border-radius:9px;background:rgba(255,255,255,.08);color:rgba(242,242,240,.8);font-size:12.5px;display:flex;gap:10px;align-items:center}
+.nota-doc button{margin-left:auto;font-weight:500;color:#f2f2f0;padding:3px 10px;border-radius:7px;background:rgba(255,255,255,.12)}
+.vuoto-doc{height:100%;display:grid;place-items:center;text-align:center;color:rgba(242,242,240,.7)}
+.vuoto-doc b{display:block;font-size:15px;color:#f2f2f0;margin:14px 0 4px;font-weight:600}
+.vuoto-doc .t{margin-top:16px;display:inline-flex}
+.ico-doc{display:inline-grid;place-items:center;width:52px;height:62px;border-radius:6px 16px 6px 6px;background:rgba(255,255,255,.1);font:700 11px var(--sans);letter-spacing:.03em}
+.fila button.dt{display:grid;place-items:center;font:700 10px var(--sans);letter-spacing:.03em;color:#f2f2f0}
+.fila button.dt span{display:block;font:500 9px var(--sans);opacity:.6;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0;margin-top:2px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#f2f2f0;color:#111;padding:8px 14px;border-radius:10px;opacity:0;transition:opacity .2s}.toast.on{opacity:1}
+</style></head>
+<body><div class="app">
+<div class="top" data-tauri-drag-region><div class="fonte" id="fonte" hidden><span class="f-logo" id="f-logo"></span><div class="f-tx"><div class="f-nome" id="f-nome"></div><div class="f-quando" id="f-quando"></div></div></div>
+  <div class="tit"><div class="nome" id="nome"></div><div class="meta" id="meta"></div></div><span class="posto" id="posto"></span>
+  <button class="t primario" id="vai-chat" hidden title="Apre la sessione e scorre fino al messaggio con questa foto (↩)">Mostra nella chat<kbd>↩</kbd></button>
+  <button class="t" id="vai-sess" hidden title="Va alla sessione senza scorrere">Apri la sessione</button><span class="sep" id="sep" hidden></span>
+  <button class="t primario" id="copia-tutto" hidden title="Copia tutto il testo (⌘C)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>Copia tutto<kbd>⌘C</kbd></button>
+  <button class="t" id="copia" title="Copia (⌘C)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>Copia</button>
+  <button class="t" id="apri-web" hidden title="Apri la pagina nel browser">Apri nel browser</button>
+  <button class="t" id="percorso">Percorso</button><button class="t" id="apri">Apri</button><button class="t" id="finder">Finder</button>
+  <button class="t" id="chiudi" title="Chiudi (Esc)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg></button></div>
+<div class="corpo" id="corpo"><button class="fr sx" id="prima"><svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2 4 7l5 5"/></svg></button>
+  <button class="fr dx" id="dopo"><svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 2 5 5-5 5"/></svg></button><div class="zoomlab" id="zoomlab"></div></div>
+<div class="foglio" id="foglio" tabindex="-1" hidden></div>
+<div class="piede" id="piede"><div class="p-lato" id="lato-ambito"><div class="seg" id="ambito" role="radiogroup" aria-label="Quali foto mostrare"><i></i><button data-ambito="progetto" role="radio" title="Solo le foto di questo progetto">Questo progetto</button><button data-ambito="tutti" role="radio" title="Le foto di tutti i progetti, dalla più recente">Tutti</button></div></div>
+  <div class="scorri" id="scorri"><div class="fila" id="fila"></div></div><div class="p-lato dx"></div></div></div><div class="toast" id="toast"></div>
+<script>
+const T = window.__TAURI__, invoke = (c, a) => T.core.invoke(c, a), $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const VIDEO = /\.(mp4|mov|m4v|webm)$/i, IMMAGINE = /\.(png|jpe?g|gif|webp|heic|svg|bmp|tiff?)$/i;
+/** Document (text, PDF, CSV, Word...): read on a sheet instead of on the image canvas. */
+const eDoc = (m) => !!m && (!!m.doc || (!!m.f && !VIDEO.test(m.f) && !IMMAGINE.test(m.f)));
+let modoDoc = false, docCorrente = null;
+let media = [], vi = 0, vz = { s: 1, x: 0, y: 0, fit: 1, lunga: 0 };
+// Viewer strip: "Questo progetto" (photos of the project of the open one) or "Tutti" (all projects), most recent first.
+// base = what the opener of the viewer passed (a chat, the Juggl strip, `mostra`); tutti = recent media of all
+// sessions (visore_tutti, the same as the Juggl strip). The choice stays saved.
+let base = [], tutti = [], ambito = "progetto", corrente = "", fila = "";
+try { if (localStorage.getItem("visore-ambito") === "tutti") ambito = "tutti"; } catch {}
+const FERMO = matchMedia("(prefers-reduced-motion: reduce)");
+const chiave = (m) => m?.f || m?.d || "";
+const progettoDi = (m) => m?.progetto?.id || m?.progetto?.cartella || (m?.sessione ? "s:" + m.sessione : "");
+const tempo = (m) => Date.parse(m.t || "") || (m.mt || 0) * 1000;
+/** The passed ones plus those of all sessions, without duplicates. To passed items without a session (a chat, `mostra`) I give the
+ *  source found in the strip; if the found ones all come from the same session, that source applies to all. */
+function insieme() {
+  const bySrc = new Map(tutti.map((m) => [chiave(m), m]));
+  const matched = base.filter((m) => !m.sessione).map((m) => bySrc.get(chiave(m))).filter(Boolean);
+  const common = new Set(matched.map((m) => m.sessione)).size === 1 ? matched[0] : null;
+  const out = new Map();
+  for (const m of base) {
+    const k = chiave(m), r = bySrc.get(k), srcInfo = m.sessione ? null : r || common, x = { ...m };
+    if (srcInfo) Object.assign(x, { sessione: srcInfo.sessione, nome: srcInfo.nome, logo: srcInfo.logo, progetto: srcInfo.progetto });
+    if (r) { x.t ||= r.t; x.mini ||= r.mini; if (x.progetto == null && r.sessione === x.sessione) x.progetto = r.progetto; }
+    if (k && !out.has(k)) out.set(k, x);
+  }
+  for (const m of tutti) if (!out.has(chiave(m))) out.set(chiave(m), m);
+  return [...out.values()];
+}
+/** Recompute the strip list keeping the open photo still. */
+function ricalcola() {
+  // documents: only the passed ones (the answer you opened them from), in their order
+  if (modoDoc) { media = base.slice(); vi = Math.max(0, media.findIndex((m) => chiave(m) === corrente)); return; }
+  const everything = insieme(), c = everything.find((m) => chiave(m) === corrente) || everything[0];
+  if (!c) { media = []; vi = 0; return; }
+  corrente = chiave(c);
+  const k = progettoDi(c), l = ambito === "tutti" ? everything : everything.filter((m) => progettoDi(m) === k);
+  media = l.map((m, i) => [m, i]).sort((a, b) => tempo(b[0]) - tempo(a[0]) || a[1] - b[1]).map((x) => x[0]);
+  vi = Math.max(0, media.findIndex((m) => chiave(m) === corrente));
+}
+/** Strip: rebuilt only if the list changes (with a short fade), otherwise only the highlighted photo moves. */
+function nastro(dolce) {
+  const sc = $("#scorri"), fl = $("#fila"), sig = media.map(chiave).join("\n");
+  const center = (smoothScroll) => {
+    fl.querySelectorAll("button.on").forEach((b) => b.classList.remove("on"));
+    const b = fl.children[vi]; if (!b) return; b.classList.add("on");
+    sc.scrollTo({ left: Math.max(0, b.offsetLeft - (sc.clientWidth - b.offsetWidth) / 2), behavior: smoothScroll && !FERMO.matches ? "smooth" : "auto" });
+  };
+  if (sig === fila && !sc._t) return center(true);
+  const html = media.map((x, i) => eDoc(x) ? `<button data-i="${i}" class="dt" title="${esc(x.nome || (x.f || "").split("/").pop())}">${esc(estDi(x))}<span>${esc(x.nome || (x.f || "").split("/").pop())}</span></button>` : `<button data-i="${i}" title="${esc((x.progetto?.nome || x.nome || "") + (x.f ? " · " + x.f.split("/").pop() : ""))}">${x.mini ? `<img src="${esc(T.core.convertFileSrc(x.mini))}" loading="lazy" decoding="async">` : VIDEO.test(x.f || "") ? `<video src="${esc(src(x))}#t=0.1" muted preload="metadata"></video>` : `<img src="${esc(src(x))}" loading="lazy" decoding="async">`}</button>`).join("");
+  const put = () => { sc._t = 0; fila = sig; fl.innerHTML = html; center(false); };
+  clearTimeout(sc._t); sc._t = 0;
+  if (!dolce || !fl.children.length || FERMO.matches) { sc.classList.remove("via"); return put(); }
+  sc.classList.add("via");
+  sc._t = setTimeout(() => { put(); requestAnimationFrame(() => sc.classList.remove("via")); }, 140);
+}
+/** The chosen part of the selector slides under the text. */
+function selettore(smoothScroll) {
+  const s = $("#ambito"), i = s.querySelector("i"), b = s.querySelector(`[data-ambito="${ambito}"]`);
+  s.querySelectorAll("button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", String(x === b)); });
+  if (!b.offsetWidth) return;
+  if (!smoothScroll) i.style.transition = "none";
+  i.style.width = b.offsetWidth + "px"; i.style.transform = `translateX(${b.offsetLeft}px)`;
+  if (!smoothScroll) { void i.offsetWidth; i.style.transition = ""; }
+}
+function scegliAmbito(a) {
+  if (a === ambito) return;
+  ambito = a; try { localStorage.setItem("visore-ambito", a); } catch {}
+  selettore(true); ricalcola(); nastro(true); testata();
+}
+/** Header and arrows: which session the photo comes from, position in the strip. */
+function testata() {
+  const m = media[vi]; if (!m) return;
+  const fromStrip = !!m.sessione && !eDoc(m);
+  $("#fonte").hidden = $("#vai-chat").hidden = $("#vai-sess").hidden = $("#sep").hidden = !fromStrip;
+  if (fromStrip) {
+    const lg = m.logo ? `<img src="${esc(T.core.convertFileSrc(m.logo))}" alt="">` : esc(iniziali(m.nome));
+    if ($("#f-logo").innerHTML !== lg) $("#f-logo").innerHTML = lg;
+    $("#f-nome").textContent = m.nome || "Sessione"; $("#f-quando").textContent = quanto(m.t);
+  }
+  $("#posto").textContent = media.length > 1 ? `${vi + 1} di ${media.length}` : "";
+  $("#prima").style.display = $("#dopo").style.display = media.length > 1 ? "" : "none";
+  const projName = m.progetto?.nome || (m.sessione ? m.nome : "");
+  $('[data-ambito="progetto"]').title = projName ? `Solo le foto di ${projName}` : "Solo le foto aperte qui";
+}
+/** Media of all sessions: on open I use those already fetched (right away), then refresh them without touching the open photo. */
+let chiesti = 0;
+async function prendiTutti() {
+  const own = ++chiesti;
+  let l; try { l = await invoke("visore_tutti"); } catch { return; }
+  if (own !== chiesti || !Array.isArray(l)) return;
+  tutti = l;
+  if (!base.length || modoDoc) return;
+  ricalcola(); nastro(true); testata();
+}
+const src = (m) => (m.f ? T.core.convertFileSrc(m.f) : m.d);
+function quanto(iso) {
+  const t = Date.parse(iso || ""); if (!t) return "";
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 1) return "adesso"; if (m < 60) return m + " min fa";
+  const h = Math.floor(m / 60); if (h < 24) return h + " h fa";
+  return h < 48 ? "ieri" : new Date(t).toLocaleDateString("it-IT", { day: "numeric", month: "short" });
+}
+const iniziali = (n) => String(n || "?").replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).slice(0, 2).map((x) => x[0] || "").join("").toUpperCase() || "?";
+/** Back to Juggl, to the session of this photo: scorri = down to the message with the photo. */
+function vaiSessione(scorri) { const m = media[vi]; if (!m?.sessione) return; fermaVideo(); invoke("vai_al_media", { sessione: m.sessione, path: m.f || "", t: m.t || "", scorri }); }
+function toast(t) { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove("on"), 1500); }
+function chiudi() { document.querySelectorAll("video").forEach((v) => { try { v.pause(); v.removeAttribute("src"); v.load(); } catch {} }); invoke("chiudi_visore"); }
+function fermaVideo() { $("#corpo").querySelectorAll("video").forEach((v) => { try { v.pause(); v.removeAttribute("src"); v.load(); } catch {} }); }
+let giro = 0;
+async function mostra() {
+  const m = media[vi]; if (!m) return;
+  const own = ++giro;   // if you open another one meanwhile, this one stops
+  const c = $("#corpo"); fermaVideo(); c.querySelectorAll("img,video,.attesa").forEach((x) => x.remove());
+  corrente = chiave(m);
+  const doc = eDoc(m);
+  $("#nome").textContent = doc && m.tipo === "pagina" ? m.nome || "Pagina" : m.f ? m.f.split("/").pop() : "Immagine";
+  $("#corpo").hidden = doc; $("#foglio").hidden = !doc; $("#copia-tutto").hidden = !doc; $("#copia").hidden = doc;
+  $("#apri").title = doc ? "Apri con l'app del Mac" : "Apri";
+  // published page (`juggl pagina`): web link, no path or Finder
+  const web = doc && m.tipo === "pagina";
+  $("#apri-web").hidden = !web || !!m.scaduta;
+  $("#copia-tutto").lastElementChild.previousSibling.textContent = web ? "Copia link" : "Copia tutto";
+  if (!doc) { $("#foglio").innerHTML = ""; docCorrente = null; }
+  testata();
+  $("#meta").textContent = m.f ? m.f.replace(/^\/Users\/[^/]+/, "~") : "";
+  ["percorso", "apri", "finder"].forEach((k) => ($("#" + k).style.display = m.f && !web ? "" : "none"));
+  nastro(false);
+  if (doc) return mostraDoc(m, own);
+  const weight = m.f ? ((await invoke("info_file", { path: m.f }))?.byte || 0) : Math.round((m.d.length * 3) / 4);
+  if (own !== giro) return;
+  const kb = weight > 1048576 ? (weight / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.round(weight / 1024) + " KB";
+  if (VIDEO.test(m.f || "")) {
+    const el = document.createElement("video"); Object.assign(el, { src: src(m), controls: true, autoplay: true, loop: false });
+    el.onloadedmetadata = () => ($("#meta").textContent = `${el.videoWidth}×${el.videoHeight} · ${Math.round(el.duration)} s · ${kb}` + (m.f ? " · " + m.f.replace(/^\/Users\/[^/]+/, "~") : ""));
+    c.appendChild(el); $("#zoomlab").textContent = "";
+  } else {
+    // the image stays invisible until decoded and fitted: no giant preview, no jumps
+    const attempt = document.createElement("div"); attempt.className = "attesa"; c.appendChild(attempt);
+    const el = document.createElement("img"); el.decoding = "async"; el.draggable = false; el.src = src(m);
+    c.appendChild(el);
+    await pronto(el);
+    if (!el.naturalWidth) { attempt.remove(); $("#meta").textContent = "Immagine non leggibile"; return; }
+    if (own !== giro) return;
+    attempt.remove();
+    $("#meta").textContent = `${el.naturalWidth}×${el.naturalHeight} · ${kb}` + (m.f ? " · " + m.f.replace(/^\/Users\/[^/]+/, "~") : "");
+    try { await anteprimaLeggera(el, m); } catch (e) { console.warn("copia ridotta non riuscita", e); }
+    if (own !== giro) return;
+    adatta(); el.getBoundingClientRect(); el.classList.add("pronta");
+  }
+}
+// huge images (over 12 million pixels): show a copy scaled to the screen, the original only when zooming
+// pronta = loaded and (if the engine cooperates) decoded; never an endless wait
+function pronto(el) {
+  const carica = new Promise((r) => { if (el.complete && el.naturalWidth) r(); else { el.addEventListener("load", r, { once: true }); el.addEventListener("error", r, { once: true }); } });
+  return carica.then(() => Promise.race([el.decode().catch(() => {}), new Promise((r) => setTimeout(r, 400))]));
+}
+const dim = (el) => ({ w: +el.dataset.w || el.naturalWidth, h: +el.dataset.h || el.naturalHeight });
+async function anteprimaLeggera(el, m) {
+  const nw = el.naturalWidth, nh = el.naturalHeight;
+  if (nw * nh <= 12e6) return;
+  const k = Math.min(1, 3200 / nw, 3200 / nh), cv = document.createElement("canvas");
+  cv.width = Math.round(nw * k); cv.height = Math.round(nh * k);
+  const ctx = cv.getContext("2d"); ctx.imageSmoothingQuality = "high"; ctx.drawImage(el, 0, 0, cv.width, cv.height);
+  const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.92)); if (!blob) return;
+  el.dataset.w = nw; el.dataset.h = nh; el.dataset.orig = src(m); el.dataset.ridotta = cv.width;
+  el.src = URL.createObjectURL(blob); await pronto(el);
+}
+function originaleSeServe(el) {
+  if (!el.dataset.orig || el.dataset.usaOrig) return;
+  if (dim(el).w * vz.s > +el.dataset.ridotta * 1.15) { el.dataset.usaOrig = "1"; const u = el.src; el.src = el.dataset.orig; el.decode().catch(() => {}).finally(() => URL.revokeObjectURL(u)); }
+}
+function adatta() {
+  const c = $("#corpo"), el = c.querySelector("img"); if (!el || !el.naturalWidth) return;
+  const W = c.clientWidth - 96, H = c.clientHeight - 48, { w: nw, h: nh } = dim(el);
+  vz.fit = Math.min(1.5, W / nw, H / nh);   // small images get enlarged a bit (up to 1.5x)
+  if (nh / nw > 2.2) { vz.lunga = Math.min(Math.max(vz.fit, Math.min(W, 900) / nw), 3); vz.s = vz.lunga; vz.x = 0; vz.y = (nh * vz.s - H) / 2; }
+  else { vz.lunga = 0; vz.s = vz.fit; vz.x = 0; vz.y = 0; }
+  disegna();
+}
+function limita() { const c = $("#corpo"), el = c.querySelector("img"); if (!el) return; const W = c.clientWidth - 48, H = c.clientHeight - 32, w = dim(el).w * vz.s, h = dim(el).h * vz.s; const mx = Math.max(0, (w - W) / 2), my = Math.max(0, (h - H) / 2); vz.x = Math.max(-mx, Math.min(mx, vz.x)); vz.y = Math.max(-my, Math.min(my, vz.y)); }
+function disegna() { const el = $("#corpo img"); if (!el) return; limita(); originaleSeServe(el); const w = dim(el).w * vz.s, h = dim(el).h * vz.s; el.style.width = w + "px"; el.style.height = h + "px"; el.style.transform = `translate(${-w / 2 + vz.x}px, ${-h / 2 + vz.y}px)`; $("#corpo").classList.toggle("zoom", vz.s > vz.fit + 0.001); $("#zoomlab").textContent = Math.round(vz.s * 100) + "%"; }
+function zoomA(n, cx, cy) { const r = $("#corpo").getBoundingClientRect(); const px = cx - r.left - r.width / 2, py = cy - r.top - r.height / 2, k = n / vz.s; vz.x = px - (px - vz.x) * k; vz.y = py - (py - vz.y) * k; vz.s = n; if (vz.s <= vz.fit + 0.001) { vz.s = vz.fit; vz.x = 0; vz.y = 0; } disegna(); }
+function vai(d) { const n = vi + d; if (n < 0 || n >= media.length) return; vi = n; mostra(); }
+// ---------- documents ----------
+const pesoDoc = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round((b || 0) / 1024)) + " KB");
+const estDi = (m) => { if (m.tipo === "pagina") return "WEB"; const n = m.nome || (m.f || "").split("/").pop() || ""; return n.includes(".") ? n.split(".").pop().toUpperCase().slice(0, 4) : "FILE"; };
+function quandoMod(secs) { if (!secs) return ""; const q = quanto(new Date(secs * 1000).toISOString()); return q ? "modificato " + q : ""; }
+function vuotoDoc(m, msg) { return `<div class="vuoto-doc"><div><span class="ico-doc">${esc(estDi(m))}</span><b>${esc(m.nome || (m.f || "").split("/").pop())}</b>${esc(msg)}<br><button class="t primario" data-apri-app>Apri con l'app</button></div></div>`; }
+/** Markdown laid out like a document: headings, lists (also nested and with checkboxes), tables, quotes, code. */
+function inlDoc(t) {
+  const codeLines = [];
+  t = t.replace(/`([^`]+)`/g, (_, c) => `\u0001${codeLines.push(c) - 1}\u0001`)
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, a) => (a ? `<em>${a}</em>` : ""))
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, tx, u) => `<a data-url="${u}">${tx}</a>`)
+    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a data-url="$2">$2</a>')
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>")
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>").replace(/(^|[^_\w])_([^_\n]+)_(?!\w)/g, "$1<em>$2</em>")
+    .replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  return t.replace(/\u0001(\d+)\u0001/g, (_, n) => `<code>${codeLines[+n]}</code>`);
+}
+const VOCE_DOC = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+function mdDoc(src) {
+  const L = String(src || "").replace(/\r\n?/g, "\n").split("\n");
+  let h = "", i = 0;
+  if (L[0] === "---") { const j = L.indexOf("---", 1); if (j > 0) i = j + 1; }   // YAML front matter
+  const blockStart = (x) => /^(#{1,6}\s|\s*(```|~~~)|\s*>|\s*\|)/.test(x) || VOCE_DOC.test(x);
+  while (i < L.length) {
+    const r = L[i]; let m;
+    if (!r.trim()) { i++; continue; }
+    if ((m = r.match(/^\s*(```|~~~)/))) { const b = []; i++; while (i < L.length && !L[i].trim().startsWith(m[1])) b.push(L[i++]); i++; h += `<pre><code>${esc(b.join("\n"))}</code></pre>`; continue; }
+    if ((m = r.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/))) { const n = Math.min(m[1].length, 5); h += `<h${n}>${inlDoc(esc(m[2]))}</h${n}>`; i++; continue; }
+    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(r)) { h += "<hr>"; i++; continue; }
+    if (/^\s*>/.test(r)) { const b = []; while (i < L.length && /^\s*>/.test(L[i])) b.push(L[i++].replace(/^\s*>\s?/, "")); h += `<blockquote>${mdDoc(b.join("\n"))}</blockquote>`; continue; }
+    if (/^\s*\|/.test(r) && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(L[i + 1] || "")) {
+      const rr = []; while (i < L.length && /^\s*\|/.test(L[i])) rr.push(L[i++]);
+      const cells = (x) => x.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      h += `<table><thead><tr>${cells(rr[0]).map((c) => `<th>${inlDoc(esc(c))}</th>`).join("")}</tr></thead><tbody>${rr.slice(2).map((x) => `<tr>${cells(x).map((c) => `<td>${inlDoc(esc(c))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      continue;
+    }
+    if (VOCE_DOC.test(r)) {
+      const stack = [];
+      while (i < L.length) {
+        const x = L[i], v = x.match(VOCE_DOC);
+        if (!v) { if (x.trim() && /^\s{2,}/.test(x) && stack.length) { h += "<br>" + inlDoc(esc(x.trim())); i++; continue; } break; }
+        const ind = v[1].replace(/\t/g, "    ").length, tag = /\d/.test(v[2]) ? "ol" : "ul";
+        while (stack.length > 1 && ind < stack[stack.length - 1].ind) h += `</li></${stack.pop().tag}>`;
+        if (!stack.length || ind > stack[stack.length - 1].ind) { h += `<${tag}>`; stack.push({ ind, tag }); } else h += "</li>";
+        const sp = v[3].match(/^\[( |x|X)\]\s+(.*)$/);
+        h += sp ? `<li class="spunta${sp[1] !== " " ? " fatta" : ""}"><i>${sp[1] !== " " ? "✓" : ""}</i>${inlDoc(esc(sp[2]))}` : `<li>${inlDoc(esc(v[3]))}`;
+        i++;
+        if (i + 1 < L.length && !L[i].trim() && VOCE_DOC.test(L[i + 1])) i++;   // empty line between two items: same list
+      }
+      while (stack.length) h += `</li></${stack.pop().tag}>`;
+      continue;
+    }
+    const b = [];
+    while (i < L.length && L[i].trim() && (!b.length || !blockStart(L[i]))) b.push(L[i++]);
+    h += `<p>${b.map((x) => inlDoc(esc(x.trim()))).join("<br>")}</p>`;
+  }
+  return h;
+}
+const NUM_DOC = /^[-+]?[€$£]?\s?[-+]?\d[\d.,\s]*%?\s?[€$£]?$/;
+function tabellaDoc(r) {
+  const rr = r.righe || []; if (!rr.length) return `<article class="carta semplice">${esc(r.testo || "")}</article>`;
+  const n = Math.min(60, Math.max(...rr.slice(0, 300).map((x) => x.length)));
+  const col = Array.from({ length: n }, (_, i) => i);
+  const cells = (c) => `<td${NUM_DOC.test(c.trim()) && c.trim() ? ' class="n"' : ""}${c.length > 48 ? ` title="${esc(c)}"` : ""}>${esc(c)}</td>`;
+  const note = r.righe_tagliate ? `<div class="nota-doc">Mostro le prime ${rr.length} righe.<button data-apri-app>Apri con l'app</button></div>` : "";
+  return note + `<div class="carta tabella"><table><thead><tr>${col.map((i) => `<th>${esc(rr[0][i] || "")}</th>`).join("")}</tr></thead><tbody>${rr.slice(1).map((x) => `<tr>${col.map((i) => cells(x[i] || "")).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+/** Word, RTF, ODT already converted to HTML by the Mac: white page, document margins, no scripts (iframe sandbox). */
+const paginaDoc = (html) => `<style>html{background:#fff;color:#111}body{max-width:620px;margin:40px auto;padding:0 48px;font:15px/1.55 -apple-system,"Helvetica Neue",sans-serif;zoom:1.25}img{max-width:100%;height:auto}table{border-collapse:collapse}</style>` + String(html || "");
+async function mostraDoc(m, own) {
+  const f = $("#foglio");
+  f.classList.remove("pieno"); f.scrollTop = 0; f.scrollLeft = 0;
+  if (m.tipo === "pagina") {
+    docCorrente = null;
+    $("#meta").textContent = [m.cartella || "Pagina", m.scaduta ? "scaduta" : (m.link || m.f).replace(/^https:\/\//, "")].filter(Boolean).join(" · ");
+    if (m.scaduta) { f.innerHTML = `<div class="vuoto-doc"><div><span class="ico-doc">WEB</span><b>${esc(m.nome || "Pagina")}</b>Questa pagina è scaduta e non è più online.</div></div>`; return; }
+    f.classList.add("pieno");
+    f.innerHTML = `<div class="carta pagina"><iframe sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms" referrerpolicy="no-referrer" src="${esc(m.link || m.f)}"></iframe></div>`;
+    return;
+  }
+  f.innerHTML = `<div class="vuoto-doc"><div class="attesa-doc"></div></div>`;
+  $("#meta").textContent = [m.cartella, m.byte ? pesoDoc(m.byte) : "", m.f ? m.f.replace(/^\/Users\/[^/]+/, "~") : ""].filter(Boolean).slice(0, 2).join(" · ");
+  let r; try { r = await invoke("leggi_documento", { path: m.f }); } catch (e) { r = { ok: false, msg: String(e) }; }
+  if (own !== giro) return;
+  docCorrente = r?.ok ? r : null;
+  if (!r?.ok) { f.innerHTML = vuotoDoc(m, r?.msg || "Non riesco ad aprirlo."); return; }
+  $("#meta").textContent = [r.cartella, pesoDoc(r.byte), quandoMod(r.modificato)].filter(Boolean).join(" · ");
+  const note = r.troncato ? `<div class="nota-doc">Il file è lungo: qui vedi la prima parte. Copia tutto copia il file intero.<button data-apri-app>Apri con l'app</button></div>` : "";
+  const src = T.core.convertFileSrc(r.path);
+  let h = "", full = false;
+  switch (r.tipo) {
+    case "markdown": h = `<article class="carta">${mdDoc(r.testo)}</article>`; break;
+    case "testo": h = `<article class="carta semplice">${esc(r.testo)}</article>`; break;
+    case "codice": case "json": {
+      const rows = String(r.testo).replace(/\n$/, "").split("\n");
+      h = `<article class="carta codice${rows.length > 40000 ? " senza" : ""}">${rows.map((x) => `<span class="r">${esc(x) || " "}</span>`).join("")}</article>`; break;
+    }
+    case "csv": h = tabellaDoc(r); break;
+    case "html": h = `<div class="carta pagina"><iframe sandbox="" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`; full = true; break;
+    case "documento": h = `<div class="carta pagina"><iframe sandbox="" srcdoc="${esc(paginaDoc(r.html))}"></iframe></div>`; full = true; break;
+    case "pdf": h = `<div class="carta pdf"><iframe src="${esc(src)}"></iframe></div>`; full = true; break;
+    case "ufficio": {
+      const a = await invoke("anteprima_documento", { path: r.path }); if (own !== giro) return;
+      h = a?.ok ? `<div class="nota-doc">Anteprima della prima pagina.<button data-apri-app>Apri con l'app</button></div><div class="carta foto"><img src="${esc(T.core.convertFileSrc(a.path))}" alt=""></div>` : vuotoDoc(m, "Anteprima non disponibile.");
+      break;
+    }
+    default: h = vuotoDoc(m, "Questo tipo di file si apre con la sua app.");
+  }
+  f.classList.toggle("pieno", full);
+  f.innerHTML = note + h;
+  f.focus({ preventScroll: true });
+}
+/** Copy all the document text: message drafts get copied and pasted. */
+async function copiaTutto() {
+  const m = media[vi]; if (!m) return;
+  if (m.tipo === "pagina") { toast((await invoke("copia_testo", { testo: m.link || m.f })) ? "Link copiato" : "Copia non riuscita"); return; }
+  const r = docCorrente && docCorrente.path === m.f ? docCorrente : null;
+  let t = r && !r.troncato && r.tipo !== "pdf" && r.tipo !== "ufficio" ? r.testo : null;
+  if (t == null) { const x = await invoke("testo_documento", { path: m.f }); t = x?.ok ? x.testo : null; }
+  if (t != null && r?.tipo === "html") { const d = new DOMParser().parseFromString(t, "text/html"); d.querySelectorAll("script,style,noscript").forEach((x) => x.remove()); t = (d.body?.textContent || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
+  if (!t) return toast("Niente testo da copiare");
+  toast((await invoke("copia_testo", { testo: t })) ? "Copiato tutto" : "Copia non riuscita");
+}
+async function copia() { const m = media[vi]; const r = m.f ? await invoke("copia_file", { path: m.f }) : await invoke("copia_dati", { dati: m.d }); toast(r.ok ? "Copiato" : "Copia non riuscita"); }
+async function carica(d) {
+  if (!d) return;
+  base = Array.isArray(d.media) ? d.media : [];
+  const m0 = base[Math.max(0, Math.min(d.indice || 0, base.length - 1))]; if (!m0) return;
+  corrente = chiave(m0); fila = ""; modoDoc = eDoc(m0); ricalcola();
+  // documents: no "Questo progetto / Tutti" (they are those of the answer); the strip only if there is more than one
+  $("#lato-ambito").style.visibility = modoDoc ? "hidden" : "";
+  $("#piede").style.display = modoDoc && media.length < 2 ? "none" : "";
+  selettore(false); prendiTutti();
+  await mostra();
+}
+(() => {
+  const c = $("#corpo"); let shot = null;
+  c.addEventListener("wheel", (e) => { if (!c.querySelector("img")) return; e.preventDefault(); if (e.ctrlKey || e.metaKey) zoomA(Math.min(8, Math.max(vz.fit, vz.s * Math.exp(-e.deltaY / 120))), e.clientX, e.clientY); else { vz.x -= e.deltaX; vz.y -= e.deltaY; disegna(); } }, { passive: false });
+  c.addEventListener("dblclick", (e) => { if (!c.querySelector("img")) return; if (vz.lunga && Math.abs(vz.s - vz.lunga) > 0.01) return adatta(); zoomA(vz.s > vz.fit + 0.001 ? vz.fit : Math.max(1, vz.fit * 2.2), e.clientX, e.clientY); });
+  c.addEventListener("mousedown", (e) => { if (vz.s > vz.fit && e.target.tagName === "IMG") { shot = { x: e.clientX - vz.x, y: e.clientY - vz.y }; c.classList.add("tira"); e.preventDefault(); } });
+  addEventListener("mousemove", (e) => { if (shot) { vz.x = e.clientX - shot.x; vz.y = e.clientY - shot.y; disegna(); } });
+  addEventListener("mouseup", () => { shot = null; c.classList.remove("tira"); });
+  addEventListener("resize", adatta);
+})();
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#chiudi") || (e.target.id === "corpo" && vz.s <= vz.fit + 0.001) || ((e.target.id === "foglio" || e.target.classList.contains("vuoto-doc")) && !String(getSelection()))) return chiudi();
+  if (e.target.closest("#copia-tutto")) return copiaTutto();
+  if (e.target.closest("#apri-web")) return invoke("apri_link", { url: media[vi]?.link || media[vi]?.f });
+  if (e.target.closest("[data-apri-app]")) return invoke("apri_file", { path: media[vi]?.f, finder: false });
+  const lk = e.target.closest("#foglio a[data-url]"); if (lk) { if (/^https?:/.test(lk.dataset.url)) invoke("apri_link", { url: lk.dataset.url }); return; }
+  if (e.target.closest("#prima")) return vai(-1); if (e.target.closest("#dopo")) return vai(1);
+  const p = e.target.closest("[data-i]"); if (p) { vi = +p.dataset.i; return mostra(); }
+  const a = e.target.closest("[data-ambito]"); if (a) return scegliAmbito(a.dataset.ambito);
+  if (e.target.closest("#copia")) return copia();
+  if (e.target.closest("#vai-chat")) return vaiSessione(true);
+  if (e.target.closest("#vai-sess")) return vaiSessione(false);
+  if (e.target.closest("#percorso")) { invoke("copia_testo", { testo: media[vi]?.f || "" }); return toast("Percorso copiato"); }
+  if (e.target.closest("#apri")) return invoke("apri_file", { path: media[vi]?.f, finder: false });
+  if (e.target.closest("#finder")) return invoke("apri_file", { path: media[vi]?.f, finder: true });
+});
+addEventListener("keydown", (e) => {
+  const k = e.key, doc = eDoc(media[vi]);
+  if (k === "Escape" || (k === " " && !doc) || (e.metaKey && k === "w")) { e.preventDefault(); chiudi(); }
+  else if (doc && e.metaKey && k === "c") { if (!String(getSelection())) { e.preventDefault(); copiaTutto(); } }
+  else if (doc && e.metaKey && k === "a") { const c = $("#foglio .carta"); if (c && !c.querySelector("iframe")) { e.preventDefault(); getSelection().selectAllChildren(c); } }
+  else if (doc && (k === "ArrowRight" || k === "ArrowLeft") && media.length < 2) {}
+  else if (k === "ArrowRight") vai(1); else if (k === "ArrowLeft") vai(-1);
+  else if (doc) {}
+  else if (k === "Enter" && media[vi]?.sessione) { e.preventDefault(); vaiSessione(!e.altKey); }
+  else if (k === "ArrowDown" || k === "ArrowUp") { vz.y += k === "ArrowDown" ? -200 : 200; disegna(); }
+  else if (e.metaKey && e.altKey && (k === "c" || k === "ç")) { invoke("copia_testo", { testo: media[vi]?.f || "" }); toast("Percorso copiato"); }
+  else if (e.metaKey && k === "c") { e.preventDefault(); copia(); }
+  else if (k === "0") { vz.s = vz.fit; vz.x = 0; vz.y = 0; disegna(); } else if (k === "1") adatta();
+}, true);
+// Esc taken by the system while this window is in front (like in the main app)
+addEventListener("focus", () => invoke("esc_cattura", { on: true }));
+addEventListener("blur", () => invoke("esc_cattura", { on: false }));
+T.event.listen("esc", () => { if (document.hasFocus()) chiudi(); });
+T.event.listen("visore-dati", (e) => carica(e.payload));
+T.event.listen("visore-nascosto", () => fermaVideo());
+// window hidden or covered: no video stays playing
+document.addEventListener("visibilitychange", () => { if (document.hidden) fermaVideo(); });
+invoke("visore_dati").then(carica);
+prendiTutti();   // the viewer is created hidden at startup: media of all sessions are ready at the first opening
+addEventListener("resize", () => selettore(false));
+addEventListener("focus", () => selettore(false));   // created hidden: the real size arrives when it appears
+if (document.hasFocus()) invoke("esc_cattura", { on: true });
+</script></body></html>

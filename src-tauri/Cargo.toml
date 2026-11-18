@@ -1,0 +1,83 @@
+[package]
+# rename (Nov 14): the package name ends up in the properties of Juggl.exe (Internal name, Original file name);
+# the binary stays "tavolo" for cargo (cargo test --bin tavolo, CI, other worktrees): the visible name comes from
+# mainBinaryName in tauri.conf.json (Mac, Windows, Linux).
+name = "juggl"
+version = "0.1.104"
+edition = "2021"
+default-run = "tavolo"
+
+# binaries declared by name: Tauri's universal build looks them up this way (the keeper lives in src/programs: outside src/bin, which Tauri scans badly in the universal build)
+[[bin]]
+name = "tavolo"
+path = "src/main.rs"
+
+[[bin]]
+name = "juggl-custode"
+path = "src/programs/juggl-keeper.rs"
+
+# the author's personal features (messaging, PC agent and model): on in the normal build,
+# off in the public tree (which builds with default = []). Without "personale" the commands stay as placeholders.
+[features]
+default = []
+personale = []
+# automatic updates from juggl.dev: on in official builds, off in the public code (whoever builds it themselves updates it themselves)
+aggiornamenti = []
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+serde_json = "1"
+notify = "6"
+libc = "0.2"
+base64 = "0.22"
+tiny_http = "0.12"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
+# automatic updates (src/updates.rs) and restart after the update
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+ureq = { version = "2", default-features = false, features = ["json"] }
+# SQLite: search index (src/search_index.rs) and reading local databases
+rusqlite = { version = "0.37", features = ["bundled"] }
+# Microphone in the input box (src/microphone.rs): CoreAudio recording, AVFoundation permission, model fingerprint
+cpal = "0.18"
+sha2 = "0.10"
+# Claude weekly quota (src/quota.rs): fast search in transcript lines
+memchr = "2"
+# QR code to pair the iPhone app (Settings > iPhone, main.rs ponte_info)
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+# signed Juggl license (src/license.rs): Ed25519 check with ring, already pulled in by rustls (no OpenSSL)
+ring = "0.17"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+# single Juggl instance: opening it a second time brings the first one forward (on the Mac the system already does this)
+tauri-plugin-single-instance = "2"
+
+[target.'cfg(windows)'.dependencies]
+# src/sys.rs (signals, file locks, local time) and the keeper socket
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Time", "Win32_System_Diagnostics_ToolHelp", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_Security_Cryptography", "Win32_Security_Credentials", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse"] }
+uds_windows = "1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+
+# Windows test builds: fast to compile, low RAM
+[profile.prova]
+inherits = "release"
+opt-level = 0
+lto = false
+codegen-units = 16
+incremental = false
+debug = false
+# PC test builds: enables the test variables (JUGGL_SENZA_LICENZA...); distributed versions use release, where they are ignored
+debug-assertions = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 4
+strip = true
